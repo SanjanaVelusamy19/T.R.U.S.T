@@ -1,3 +1,4 @@
+
 # TRUST — Microservices Fintech System
 
 Enterprise-style reference implementation of a **microservices fintech platform** with a **React (Vite) dashboard**, **FastAPI** domain services, and a **central API Gateway** that brokers all client traffic.
@@ -163,3 +164,5 @@ TRUST_Project/
 ## License
 
 Reference/educational codebase — apply your own license for production reuse.
+
+
