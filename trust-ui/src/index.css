@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+/* TRUST design tokens — neon fintech on deep slate (plain :root so editors accept the file) */
+:root {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-trust-bg: #020617;
+  --color-trust-panel: rgba(15, 23, 42, 0.55);
+  --color-trust-neon: #22d3ee;
+  --color-trust-neon-soft: rgba(34, 211, 238, 0.35);
+  --color-trust-magenta: #e879f9;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.12), transparent 40%),
+    radial-gradient(circle at 80% 0%, rgba(232, 121, 249, 0.12), transparent 35%),
+    radial-gradient(circle at 50% 100%, rgba(34, 211, 238, 0.08), transparent 45%),
+    var(--color-trust-bg);
+}
+
+.glass-panel {
+  background: var(--color-trust-panel);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.6) inset,
+    0 25px 80px rgba(2, 6, 23, 0.65);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.neon-ring:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgba(15, 23, 42, 1),
+    0 0 0 4px rgba(34, 211, 238, 0.65);
+}
+
+@keyframes trust-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.trust-pulse {
+  animation: trust-pulse 1.4s ease-in-out infinite;
+}
