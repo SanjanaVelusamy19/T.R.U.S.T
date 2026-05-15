@@ -59,3 +59,75 @@ body {
 .trust-pulse {
   animation: trust-pulse 1.4s ease-in-out infinite;
 }
+
+.trust-score-glow {
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.35), transparent 70%);
+}
+
+@keyframes trust-score-rise {
+  from {
+    filter: drop-shadow(0 0 0 rgba(34, 211, 238, 0));
+  }
+  to {
+    filter: drop-shadow(0 0 12px rgba(34, 211, 238, 0.55));
+  }
+}
+
+.trust-score-arc {
+  animation: trust-score-rise 1s ease-out forwards;
+}
+
+@keyframes chart-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chart-enter {
+  animation: chart-enter 0.6s ease-out forwards;
+}
+
+@keyframes risk-ring-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 28px 4px rgba(34, 211, 238, 0.35);
+  }
+}
+
+.risk-heat-ring {
+  animation: risk-ring-pulse 2.4s ease-in-out infinite;
+}
+
+.risk-glow-low {
+  box-shadow: 0 0 32px rgba(52, 211, 153, 0.35);
+}
+
+.risk-glow-medium {
+  box-shadow: 0 0 32px rgba(251, 191, 36, 0.3);
+}
+
+.risk-glow-high {
+  box-shadow: 0 0 32px rgba(244, 63, 94, 0.35);
+}
+
+.analytics-card {
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.insight-card {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.insight-card:hover {
+  border-color: rgba(34, 211, 238, 0.35);
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.08);
+}

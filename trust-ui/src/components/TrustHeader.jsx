@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
-import { Building2, LayoutDashboard, LogOut, Shield } from "lucide-react";
+import { Building2, LayoutDashboard, LogOut, Radar, Shield } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const linkClass = ({ isActive }) =>
@@ -36,13 +36,19 @@ export function TrustHeader() {
               <NavLink to="/dashboard" className={linkClass}>
                 <span className="inline-flex items-center gap-2">
                   <LayoutDashboard className="h-4 w-4" />
-                  Dashboard
+                  Intelligence
                 </span>
               </NavLink>
               <NavLink to="/loan" className={linkClass}>
                 <span className="inline-flex items-center gap-2">
                   <Building2 className="h-4 w-4" />
                   Loan Desk
+                </span>
+              </NavLink>
+              <NavLink to="/trust" className={linkClass}>
+                <span className="inline-flex items-center gap-2">
+                  <Radar className="h-4 w-4" />
+                  Trust Index
                 </span>
               </NavLink>
             </nav>

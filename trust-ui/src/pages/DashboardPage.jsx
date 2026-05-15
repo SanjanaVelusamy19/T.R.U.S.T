@@ -1,37 +1,75 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Activity, ArrowUpRight, Gauge, ShieldCheck } from "lucide-react";
+import { Activity, ArrowUpRight, Gauge, Radar, ShieldCheck, Sparkles } from "lucide-react";
+import { TrustGraphDashboard } from "../components/analytics/TrustGraphDashboard.jsx";
 import { GlassCard } from "../components/GlassCard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { fetchTrustDashboard } from "../services/trustAnalytics.js";
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError("");
+      try {
+        const data = await fetchTrustDashboard();
+        if (!cancelled) setAnalytics(data);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message || "Unable to load trust graph analytics. Ensure the gateway and trust service are running.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-300/80">
-            Command overview
+            Financial intelligence console
           </p>
           <h1 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">
             Good day, {user?.full_name?.split(" ")[0] || "operator"}
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-400">
-            TRUST routes every client call through the hardened API gateway with JWT
-            verification, centralized logging, and adaptive rate limits aligned to
-            institutional risk controls.
+            TRUST graph analytics visualize behavioral stability, risk heat, and adaptive
+            trust momentum — all brokered through the API gateway with JWT enforcement.
           </p>
         </div>
-        <Link
-          to="/loan"
-          className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-slate-900/70 px-4 py-2 text-sm font-semibold text-cyan-100 ring-1 ring-cyan-500/40 hover:bg-slate-900"
-        >
-          Launch loan desk
-          <ArrowUpRight className="h-4 w-4" />
-        </Link>
+        <div className="flex flex-wrap gap-2 self-start">
+          <Link
+            to="/trust"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-fuchsia-500/90 to-cyan-400/90 px-4 py-2 text-sm font-semibold text-slate-950 shadow-[0_0_24px_rgba(34,211,238,0.3)] transition hover:brightness-110"
+          >
+            <Sparkles className="h-4 w-4" />
+            Run live scoring
+          </Link>
+          <Link
+            to="/loan"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900/70 px-4 py-2 text-sm font-semibold text-cyan-100 ring-1 ring-cyan-500/40 hover:bg-slate-900"
+          >
+            Launch loan desk
+            <ArrowUpRight className="h-4 w-4" />
+          </Link>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <GlassCard className="relative overflow-hidden">
           <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-cyan-400/20 blur-2xl" />
           <div className="flex items-center justify-between gap-3">
@@ -40,9 +78,7 @@ export function DashboardPage() {
                 Identity plane
               </p>
               <p className="mt-2 text-lg font-semibold text-white">Auth microservice</p>
-              <p className="mt-1 text-xs text-slate-400">
-                bcrypt-hashed credentials, JWT issuance, introspection endpoint.
-              </p>
+              <p className="mt-1 text-xs text-slate-400">JWT issuance & verification</p>
             </div>
             <ShieldCheck className="h-9 w-9 text-cyan-300" />
           </div>
@@ -56,11 +92,23 @@ export function DashboardPage() {
                 Credit surface
               </p>
               <p className="mt-2 text-lg font-semibold text-white">Loan engine</p>
-              <p className="mt-1 text-xs text-slate-400">
-                Deterministic policy checks with explainable declines and offers.
-              </p>
+              <p className="mt-1 text-xs text-slate-400">Explainable eligibility</p>
             </div>
             <Gauge className="h-9 w-9 text-fuchsia-300" />
+          </div>
+        </GlassCard>
+
+        <GlassCard className="relative overflow-hidden">
+          <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-violet-500/20 blur-2xl" />
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                Trust graph
+              </p>
+              <p className="mt-2 text-lg font-semibold text-white">Analytics engine</p>
+              <p className="mt-1 text-xs text-slate-400">Timeline, radar & risk heat</p>
+            </div>
+            <Radar className="h-9 w-9 text-violet-300" />
           </div>
         </GlassCard>
 
@@ -72,14 +120,14 @@ export function DashboardPage() {
                 Edge control
               </p>
               <p className="mt-2 text-lg font-semibold text-white">Gateway policies</p>
-              <p className="mt-1 text-xs text-slate-400">
-                SlowAPI throttles, structured request logs, uniform error envelopes.
-              </p>
+              <p className="mt-1 text-xs text-slate-400">Rate limits & structured logs</p>
             </div>
             <Activity className="h-9 w-9 text-emerald-300" />
           </div>
         </GlassCard>
       </div>
+
+      <TrustGraphDashboard data={analytics} loading={loading} error={error} showScore />
 
       <GlassCard>
         <h2 className="text-sm font-semibold text-white">Active session</h2>

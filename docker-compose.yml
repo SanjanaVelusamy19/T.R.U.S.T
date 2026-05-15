@@ -18,12 +18,19 @@ services:
     ports:
       - "8002:8002"
 
+  trust-score-service:
+    build: ./trust-score-service
+    container_name: trust-score-service
+    ports:
+      - "8003:8003"
+
   gateway:
     build: ./gateway
     container_name: trust-api-gateway
     environment:
       AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-http://auth-service:8001}
       LOAN_SERVICE_URL: ${LOAN_SERVICE_URL:-http://loan-service:8002}
+      TRUST_SCORE_SERVICE_URL: ${TRUST_SCORE_SERVICE_URL:-http://trust-score-service:8003}
       JWT_SECRET: ${JWT_SECRET}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       RATE_LIMIT_DEFAULT: ${RATE_LIMIT_DEFAULT:-100/minute}
@@ -32,6 +39,7 @@ services:
     depends_on:
       - auth-service
       - loan-service
+      - trust-score-service
 
   trust-ui:
     build:

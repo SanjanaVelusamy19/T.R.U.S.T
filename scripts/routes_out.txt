@@ -1,0 +1,1 @@
+﻿['/openapi.json', '/docs', '/docs/oauth2-redirect', '/redoc', '/calculate', '/analytics/timeline', '/analytics/dashboard', '/score', '/history', '/analytics', '/recommendations', '/radar', '/health']
