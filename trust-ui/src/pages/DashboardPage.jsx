@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Activity, ArrowUpRight, Gauge, Radar, ShieldCheck, Sparkles } from "lucide-react";
+import { AIAdvisorPanel } from "../components/advisor/AIAdvisorPanel.jsx";
 import { TrustGraphDashboard } from "../components/analytics/TrustGraphDashboard.jsx";
 import { GlassCard } from "../components/GlassCard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { fetchAdvisorSummary } from "../services/advisorApi.js";
 import { fetchTrustDashboard } from "../services/trustAnalytics.js";
 
 export function DashboardPage() {
@@ -11,6 +13,9 @@ export function DashboardPage() {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [advisor, setAdvisor] = useState(null);
+  const [advisorLoading, setAdvisorLoading] = useState(true);
+  const [advisorError, setAdvisorError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -31,6 +36,33 @@ export function DashboardPage() {
     }
 
     load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAdvisor() {
+      setAdvisorLoading(true);
+      setAdvisorError("");
+      try {
+        const data = await fetchAdvisorSummary();
+        if (!cancelled) setAdvisor(data);
+      } catch (err) {
+        if (!cancelled) {
+          setAdvisorError(
+            err.message ||
+              "Unable to load AI advisor insights. Ensure advisor-service is running on port 8004.",
+          );
+        }
+      } finally {
+        if (!cancelled) setAdvisorLoading(false);
+      }
+    }
+
+    loadAdvisor();
     return () => {
       cancelled = true;
     };
@@ -126,6 +158,8 @@ export function DashboardPage() {
           </div>
         </GlassCard>
       </div>
+
+      <AIAdvisorPanel data={advisor} loading={advisorLoading} error={advisorError} />
 
       <TrustGraphDashboard data={analytics} loading={loading} error={error} showScore />
 
