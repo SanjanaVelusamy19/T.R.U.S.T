@@ -2,7 +2,7 @@
 JWT creation and validation for the Auth service.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import jwt
@@ -27,7 +27,7 @@ def get_jwt_settings() -> JwtSettings:
 def create_access_token(subject: str, extra_claims: dict[str, Any] | None = None) -> str:
     """Issue a signed JWT access token."""
     settings = get_jwt_settings()
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
     expire = now + timedelta(minutes=settings.access_token_expire_minutes)
     payload: dict[str, Any] = {
         "sub": subject,
