@@ -4,6 +4,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
 import { LoanEligibilityPage } from "./pages/LoanEligibilityPage.jsx";
 import { LoanResultPage } from "./pages/LoanResultPage.jsx";
+import { SecurityPage } from "./pages/SecurityPage.jsx";
 import { TrustScorePage } from "./pages/TrustScorePage.jsx";
 import { LoginPage } from "./pages/LoginPage.jsx";
 import { RegisterPage } from "./pages/RegisterPage.jsx";
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/loan" element={<LoanEligibilityPage />} />
           <Route path="/loan/result" element={<LoanResultPage />} />
           <Route path="/trust" element={<TrustScorePage />} />
+          <Route path="/security" element={<SecurityPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>

@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Activity, ArrowUpRight, Gauge, Radar, ShieldCheck, Sparkles } from "lucide-react";
+import { Activity, ArrowUpRight, Gauge, Radar, ScanEye, ShieldCheck, Sparkles } from "lucide-react";
 import { AIAdvisorPanel } from "../components/advisor/AIAdvisorPanel.jsx";
 import { TrustGraphDashboard } from "../components/analytics/TrustGraphDashboard.jsx";
+import { FraudSecurityPanel } from "../components/fraud/FraudSecurityPanel.jsx";
 import { GlassCard } from "../components/GlassCard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { fetchAdvisorSummary } from "../services/advisorApi.js";
+import { fetchFraudAnalysis } from "../services/fraudApi.js";
 import { fetchTrustDashboard } from "../services/trustAnalytics.js";
 
 export function DashboardPage() {
@@ -16,6 +18,9 @@ export function DashboardPage() {
   const [advisor, setAdvisor] = useState(null);
   const [advisorLoading, setAdvisorLoading] = useState(true);
   const [advisorError, setAdvisorError] = useState("");
+  const [fraud, setFraud] = useState(null);
+  const [fraudLoading, setFraudLoading] = useState(true);
+  const [fraudError, setFraudError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +73,33 @@ export function DashboardPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadFraud() {
+      setFraudLoading(true);
+      setFraudError("");
+      try {
+        const data = await fetchFraudAnalysis();
+        if (!cancelled) setFraud(data);
+      } catch (err) {
+        if (!cancelled) {
+          setFraudError(
+            err.message ||
+              "Unable to load fraud detection insights. Ensure fraud-detection-service is running on port 8005.",
+          );
+        }
+      } finally {
+        if (!cancelled) setFraudLoading(false);
+      }
+    }
+
+    loadFraud();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -101,7 +133,7 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <GlassCard className="relative overflow-hidden">
           <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-cyan-400/20 blur-2xl" />
           <div className="flex items-center justify-between gap-3">
@@ -157,9 +189,25 @@ export function DashboardPage() {
             <Activity className="h-9 w-9 text-emerald-300" />
           </div>
         </GlassCard>
+
+        <GlassCard className="relative overflow-hidden">
+          <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-rose-500/20 blur-2xl" />
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                Behavioral security
+              </p>
+              <p className="mt-2 text-lg font-semibold text-white">Fraud detection</p>
+              <p className="mt-1 text-xs text-slate-400">Anomaly & adaptive risk</p>
+            </div>
+            <ScanEye className="h-9 w-9 text-rose-300" />
+          </div>
+        </GlassCard>
       </div>
 
       <AIAdvisorPanel data={advisor} loading={advisorLoading} error={advisorError} />
+
+      <FraudSecurityPanel data={fraud} loading={fraudLoading} error={fraudError} />
 
       <TrustGraphDashboard data={analytics} loading={loading} error={error} showScore />
 

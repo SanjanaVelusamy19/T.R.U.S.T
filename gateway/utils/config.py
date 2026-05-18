@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     loan_service_url: str = "http://localhost:8002"
     trust_score_service_url: str = "http://localhost:8003"
     advisor_service_url: str = "http://localhost:8004"
+    fraud_detection_service_url: str = "http://localhost:8005"
 
     # Must match auth-service signing secret for token verification
     jwt_secret: str = "change-me-in-production-use-long-random-secret"

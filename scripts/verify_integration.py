@@ -11,6 +11,7 @@ import urllib.request
 GATEWAY = "http://127.0.0.1:8000"
 TRUST = "http://127.0.0.1:8003"
 AUTH = "http://127.0.0.1:8001"
+FRAUD = "http://127.0.0.1:8005"
 
 
 def get(url: str, headers: dict | None = None) -> tuple[int, dict | list | str]:
@@ -75,6 +76,16 @@ def main() -> int:
         failures.append(f"trust-score /analytics/dashboard -> {code}")
     print(f"trust-score /analytics/dashboard: {code}")
 
+    code, body = get(f"{FRAUD}/health")
+    if code != 200:
+        failures.append(f"fraud-detection /health -> {code}")
+    print(f"fraud-detection /health: {code}")
+
+    code, body = get(f"{FRAUD}/fraud/analysis")
+    if code != 200 or not isinstance(body, dict) or "fraud_risk_score" not in body:
+        failures.append(f"fraud-detection /fraud/analysis -> {code}")
+    print(f"fraud-detection /fraud/analysis: {code}")
+
     code, body = get(f"{GATEWAY}/health")
     if code != 200:
         failures.append(f"gateway /health -> {code}")
@@ -100,6 +111,16 @@ def main() -> int:
             print(f"gateway /api/trust{path}: {c}")
             if c != 200:
                 failures.append(f"gateway {path} -> {c}")
+
+        for path in ("/analysis", "/alerts", "/risk-score", "/behavior-check"):
+            c, fraud_body = get(f"{GATEWAY}/api/fraud{path}", headers)
+            print(f"gateway /api/fraud{path}: {c}")
+            if c != 200:
+                failures.append(f"gateway /api/fraud{path} -> {c}")
+            elif path == "/analysis" and (
+                not isinstance(fraud_body, dict) or "fraud_risk_score" not in fraud_body
+            ):
+                failures.append("gateway /api/fraud/analysis missing fraud_risk_score")
 
     if failures:
         print("\nFAILED:")
