@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Activity, ArrowUpRight, Gauge, Orbit, Radar, ScanEye, ShieldCheck, Sparkles } from "lucide-react";
+import { Activity, ArrowUpRight, Coins, Gauge, Orbit, Radar, ScanEye, ShieldCheck, Sparkles } from "lucide-react";
 import { AIAdvisorPanel } from "../components/advisor/AIAdvisorPanel.jsx";
 import { TrustGraphDashboard } from "../components/analytics/TrustGraphDashboard.jsx";
 import { DigitalTwinPanel } from "../components/digital-twin/DigitalTwinPanel.jsx";
@@ -185,6 +185,13 @@ export function DashboardPage() {
             Launch loan desk
             <ArrowUpRight className="h-4 w-4" />
           </Link>
+          <Link
+            to="/gold-loan"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-500/10 px-4 py-2 text-sm font-semibold text-amber-100 ring-1 ring-amber-500/40 hover:brightness-110"
+          >
+            <Coins className="h-4 w-4" />
+            Gold loan desk
+          </Link>
         </div>
       </div>
 
@@ -272,6 +279,22 @@ export function DashboardPage() {
             <Orbit className="h-9 w-9 text-fuchsia-300" />
           </div>
         </GlassCard>
+
+        <Link to="/gold-loan" className="block">
+          <GlassCard className="gold-loan-panel relative h-full overflow-hidden transition hover:border-amber-400/40">
+            <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-amber-400/25 blur-2xl" />
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                  Collateral lending
+                </p>
+                <p className="mt-2 text-lg font-semibold text-white">Gold loan engine</p>
+                <p className="mt-1 text-xs text-slate-400">Valuation & trust-aware limits</p>
+              </div>
+              <Coins className="h-9 w-9 text-amber-300" />
+            </div>
+          </GlassCard>
+        </Link>
       </div>
 
       <AIAdvisorPanel data={advisor} loading={advisorLoading} error={advisorError} />

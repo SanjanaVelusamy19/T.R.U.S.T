@@ -27,6 +27,7 @@ from routes import (
     auth_routes,
     fraud_routes,
     loan_routes,
+    gold_loan_routes,
     monitoring_routes,
     trust_routes,
     twin_routes,
@@ -140,6 +141,7 @@ app.include_router(advisor_routes.router)
 app.include_router(fraud_routes.router)
 app.include_router(twin_routes.router)
 app.include_router(monitoring_routes.router)
+app.include_router(gold_loan_routes.router)
 
 
 @app.get("/health", tags=["health"])

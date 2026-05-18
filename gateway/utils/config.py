@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     fraud_detection_service_url: str = "http://localhost:8005"
     digital_twin_service_url: str = "http://localhost:8007"
     monitoring_service_url: str = "http://localhost:8006"
+    gold_loan_service_url: str = "http://localhost:8008"
 
     # Must match auth-service signing secret for token verification
     jwt_secret: str = "change-me-in-production-use-long-random-secret"

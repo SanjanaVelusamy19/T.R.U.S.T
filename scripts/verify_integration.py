@@ -13,6 +13,7 @@ TRUST = "http://127.0.0.1:8003"
 AUTH = "http://127.0.0.1:8001"
 FRAUD = "http://127.0.0.1:8005"
 TWIN = "http://127.0.0.1:8007"
+GOLD_LOAN = "http://127.0.0.1:8008"
 
 
 def get(url: str, headers: dict | None = None) -> tuple[int, dict | list | str]:
@@ -97,6 +98,19 @@ def main() -> int:
         failures.append(f"digital-twin /twin/forecast -> {code}")
     print(f"digital-twin /twin/forecast: {code}")
 
+    code, body = get(f"{GOLD_LOAN}/health")
+    if code != 200:
+        failures.append(f"gold-loan /health -> {code}")
+    print(f"gold-loan /health: {code}")
+
+    code, body = post_json(
+        f"{GOLD_LOAN}/gold-loan/evaluate",
+        {"gold_weight_grams": 50, "purity": "22K", "tenure_months": 12},
+    )
+    if code != 200 or not isinstance(body, dict) or "trust_adjusted_limit" not in body:
+        failures.append(f"gold-loan /gold-loan/evaluate -> {code}")
+    print(f"gold-loan /gold-loan/evaluate: {code}")
+
     code, body = get(f"{GATEWAY}/health")
     if code != 200:
         failures.append(f"gateway /health -> {code}")
@@ -142,6 +156,36 @@ def main() -> int:
                 not isinstance(twin_body, dict) or "projected_trust_score" not in twin_body
             ):
                 failures.append("gateway /api/twin/forecast missing projected_trust_score")
+
+        evaluate_payload = json.dumps(
+            {"gold_weight_grams": 50, "purity": "22K", "tenure_months": 12},
+        ).encode()
+        evaluate_req = urllib.request.Request(
+            f"{GATEWAY}/api/gold-loan/evaluate",
+            data=evaluate_payload,
+            headers={**headers, "Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(evaluate_req, timeout=5) as resp:
+                code = resp.status
+                gold_body = json.loads(resp.read().decode())
+        except urllib.error.HTTPError as exc:
+            code = exc.code
+            body = exc.read().decode()
+            try:
+                gold_body = json.loads(body)
+            except json.JSONDecodeError:
+                gold_body = body
+        print(f"gateway /api/gold-loan/evaluate: {code}")
+        if code != 200 or not isinstance(gold_body, dict) or "trust_adjusted_limit" not in gold_body:
+            failures.append(f"gateway /api/gold-loan/evaluate -> {code}")
+
+        for path in ("/risk-analysis", "/interest-rates", "/recommendations"):
+            c, _ = get(f"{GATEWAY}/api/gold-loan{path}", headers)
+            print(f"gateway /api/gold-loan{path}: {c}")
+            if c != 200:
+                failures.append(f"gateway /api/gold-loan{path} -> {c}")
 
     if failures:
         print("\nFAILED:")

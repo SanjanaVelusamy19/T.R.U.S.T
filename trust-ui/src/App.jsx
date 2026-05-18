@@ -8,6 +8,7 @@ import { SecurityPage } from "./pages/SecurityPage.jsx";
 import { TrustScorePage } from "./pages/TrustScorePage.jsx";
 import { TwinPage } from "./pages/TwinPage.jsx";
 import { MonitoringPage } from "./pages/MonitoringPage.jsx";
+import { GoldLoanPage } from "./pages/GoldLoanPage.jsx";
 import { LoginPage } from "./pages/LoginPage.jsx";
 import { RegisterPage } from "./pages/RegisterPage.jsx";
 
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/security" element={<SecurityPage />} />
           <Route path="/twin" element={<TwinPage />} />
           <Route path="/monitoring" element={<MonitoringPage />} />
+          <Route path="/gold-loan" element={<GoldLoanPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
