@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     trust_score_service_url: str = "http://localhost:8003"
     advisor_service_url: str = "http://localhost:8004"
     fraud_detection_service_url: str = "http://localhost:8005"
+    monitoring_service_url: str = "http://localhost:8006"
 
     # Must match auth-service signing secret for token verification
     jwt_secret: str = "change-me-in-production-use-long-random-secret"

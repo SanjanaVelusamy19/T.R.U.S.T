@@ -44,6 +44,25 @@ services:
     depends_on:
       - trust-score-service
 
+  monitoring-service:
+    build: ./monitoring-service
+    container_name: trust-monitoring-service
+    environment:
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-http://auth-service:8001}
+      LOAN_SERVICE_URL: ${LOAN_SERVICE_URL:-http://loan-service:8002}
+      TRUST_SCORE_SERVICE_URL: ${TRUST_SCORE_SERVICE_URL:-http://trust-score-service:8003}
+      ADVISOR_SERVICE_URL: ${ADVISOR_SERVICE_URL:-http://advisor-service:8004}
+      FRAUD_DETECTION_SERVICE_URL: ${FRAUD_DETECTION_SERVICE_URL:-http://fraud-detection-service:8005}
+      GATEWAY_SERVICE_URL: ${GATEWAY_SERVICE_URL:-http://gateway:8000}
+    ports:
+      - "8006:8006"
+    depends_on:
+      - auth-service
+      - loan-service
+      - trust-score-service
+      - advisor-service
+      - fraud-detection-service
+
   gateway:
     build: ./gateway
     container_name: trust-api-gateway
@@ -53,6 +72,7 @@ services:
       TRUST_SCORE_SERVICE_URL: ${TRUST_SCORE_SERVICE_URL:-http://trust-score-service:8003}
       ADVISOR_SERVICE_URL: ${ADVISOR_SERVICE_URL:-http://advisor-service:8004}
       FRAUD_DETECTION_SERVICE_URL: ${FRAUD_DETECTION_SERVICE_URL:-http://fraud-detection-service:8005}
+      MONITORING_SERVICE_URL: ${MONITORING_SERVICE_URL:-http://monitoring-service:8006}
       JWT_SECRET: ${JWT_SECRET}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       RATE_LIMIT_DEFAULT: ${RATE_LIMIT_DEFAULT:-100/minute}
@@ -64,6 +84,7 @@ services:
       - trust-score-service
       - advisor-service
       - fraud-detection-service
+      - monitoring-service
 
   trust-ui:
     build:

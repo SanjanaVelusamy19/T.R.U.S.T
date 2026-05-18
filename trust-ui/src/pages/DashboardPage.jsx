@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Activity, ArrowUpRight, Gauge, Radar, ScanEye, ShieldCheck, Sparkles } from "lucide-react";
+import { Activity, ArrowUpRight, Gauge, HeartPulse, Radar, ScanEye, ShieldCheck, Sparkles } from "lucide-react";
 import { AIAdvisorPanel } from "../components/advisor/AIAdvisorPanel.jsx";
 import { TrustGraphDashboard } from "../components/analytics/TrustGraphDashboard.jsx";
 import { FraudSecurityPanel } from "../components/fraud/FraudSecurityPanel.jsx";
+import { MonitoringInfrastructurePanel } from "../components/monitoring/MonitoringInfrastructurePanel.jsx";
 import { GlassCard } from "../components/GlassCard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { fetchAdvisorSummary } from "../services/advisorApi.js";
 import { fetchFraudAnalysis } from "../services/fraudApi.js";
+import { fetchMonitorSystemHealth } from "../services/monitorApi.js";
 import { fetchTrustDashboard } from "../services/trustAnalytics.js";
 
 export function DashboardPage() {
@@ -21,6 +23,9 @@ export function DashboardPage() {
   const [fraud, setFraud] = useState(null);
   const [fraudLoading, setFraudLoading] = useState(true);
   const [fraudError, setFraudError] = useState("");
+  const [monitor, setMonitor] = useState(null);
+  const [monitorLoading, setMonitorLoading] = useState(true);
+  const [monitorError, setMonitorError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +105,33 @@ export function DashboardPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMonitor() {
+      setMonitorLoading(true);
+      setMonitorError("");
+      try {
+        const payload = await fetchMonitorSystemHealth();
+        if (!cancelled) setMonitor(payload);
+      } catch (err) {
+        if (!cancelled) {
+          setMonitorError(
+            err.message ||
+              "Unable to load monitoring. Ensure monitoring-service is running on port 8006.",
+          );
+        }
+      } finally {
+        if (!cancelled) setMonitorLoading(false);
+      }
+    }
+
+    loadMonitor();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -133,7 +165,7 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <GlassCard className="relative overflow-hidden">
           <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-cyan-400/20 blur-2xl" />
           <div className="flex items-center justify-between gap-3">
@@ -203,11 +235,27 @@ export function DashboardPage() {
             <ScanEye className="h-9 w-9 text-rose-300" />
           </div>
         </GlassCard>
+
+        <GlassCard className="relative overflow-hidden">
+          <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-sky-500/20 blur-2xl" />
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                Observability
+              </p>
+              <p className="mt-2 text-lg font-semibold text-white">Monitoring mesh</p>
+              <p className="mt-1 text-xs text-slate-400">Health & self-healing</p>
+            </div>
+            <HeartPulse className="h-9 w-9 text-sky-300" />
+          </div>
+        </GlassCard>
       </div>
 
       <AIAdvisorPanel data={advisor} loading={advisorLoading} error={advisorError} />
 
       <FraudSecurityPanel data={fraud} loading={fraudLoading} error={fraudError} />
+
+      <MonitoringInfrastructurePanel data={monitor} loading={monitorLoading} error={monitorError} />
 
       <TrustGraphDashboard data={analytics} loading={loading} error={error} showScore />
 

@@ -4,9 +4,10 @@ import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
 import { LoanEligibilityPage } from "./pages/LoanEligibilityPage.jsx";
 import { LoanResultPage } from "./pages/LoanResultPage.jsx";
+import { LoginPage } from "./pages/LoginPage.jsx";
 import { SecurityPage } from "./pages/SecurityPage.jsx";
 import { TrustScorePage } from "./pages/TrustScorePage.jsx";
-import { LoginPage } from "./pages/LoginPage.jsx";
+import { MonitoringPage } from "./pages/MonitoringPage.jsx";
 import { RegisterPage } from "./pages/RegisterPage.jsx";
 
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="/loan/result" element={<LoanResultPage />} />
           <Route path="/trust" element={<TrustScorePage />} />
           <Route path="/security" element={<SecurityPage />} />
+          <Route path="/observability" element={<MonitoringPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>

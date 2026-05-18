@@ -12,12 +12,13 @@ GATEWAY = "http://127.0.0.1:8000"
 TRUST = "http://127.0.0.1:8003"
 AUTH = "http://127.0.0.1:8001"
 FRAUD = "http://127.0.0.1:8005"
+MONITOR = "http://127.0.0.1:8006"
 
 
-def get(url: str, headers: dict | None = None) -> tuple[int, dict | list | str]:
+def get(url: str, headers: dict | None = None, timeout: float = 5) -> tuple[int, dict | list | str]:
     req = urllib.request.Request(url, headers=headers or {})
     try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             body = resp.read().decode()
             try:
                 return resp.status, json.loads(body)
@@ -86,6 +87,16 @@ def main() -> int:
         failures.append(f"fraud-detection /fraud/analysis -> {code}")
     print(f"fraud-detection /fraud/analysis: {code}")
 
+    code, body = get(f"{MONITOR}/health")
+    if code != 200:
+        failures.append(f"monitoring /health -> {code}")
+    print(f"monitoring /health: {code}")
+
+    code, body = get(f"{MONITOR}/monitor/system-health", timeout=60.0)
+    if code != 200 or not isinstance(body, dict) or "system_status" not in body:
+        failures.append(f"monitoring /monitor/system-health -> {code}")
+    print(f"monitoring /monitor/system-health: {code}")
+
     code, body = get(f"{GATEWAY}/health")
     if code != 200:
         failures.append(f"gateway /health -> {code}")
@@ -121,6 +132,16 @@ def main() -> int:
                 not isinstance(fraud_body, dict) or "fraud_risk_score" not in fraud_body
             ):
                 failures.append("gateway /api/fraud/analysis missing fraud_risk_score")
+
+        for path in ("/system-health", "/services", "/alerts", "/latency", "/health-history"):
+            c, mon_body = get(f"{GATEWAY}/api/monitor{path}", headers, timeout=60.0)
+            print(f"gateway /api/monitor{path}: {c}")
+            if c != 200:
+                failures.append(f"gateway /api/monitor{path} -> {c}")
+            elif path == "/system-health" and (
+                not isinstance(mon_body, dict) or "services" not in mon_body
+            ):
+                failures.append("gateway /api/monitor/system-health missing services")
 
     if failures:
         print("\nFAILED:")
