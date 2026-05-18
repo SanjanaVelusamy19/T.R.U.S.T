@@ -222,3 +222,43 @@ body {
 .fraud-adaptive-warning {
   animation: chart-enter 0.4s ease-out backwards;
 }
+
+@keyframes twin-orbit-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.twin-orbit-icon {
+  animation: twin-orbit-spin 12s linear infinite;
+}
+
+@keyframes twin-panel-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(232, 121, 249, 0.08);
+  }
+  50% {
+    box-shadow: 0 0 36px 2px rgba(232, 121, 249, 0.16);
+  }
+}
+
+.twin-panel-glow {
+  animation: twin-panel-glow 5s ease-in-out infinite;
+}
+
+.twin-badge {
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.twin-scenario-card {
+  animation: chart-enter 0.45s ease-out backwards;
+}
+
+.twin-trust-line {
+  filter: drop-shadow(0 0 6px rgba(232, 121, 249, 0.45));
+}

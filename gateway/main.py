@@ -2,7 +2,7 @@
 TRUST API Gateway — single entry point for the TRUST fintech platform.
 
 Responsibilities:
-- Route /api/auth/*, /api/loan/*, /api/trust/*, /api/advisor/*, and /api/fraud/* to downstream microservices
+- Route /api/auth/*, /api/loan/*, /api/trust/*, /api/advisor/*, /api/fraud/*, and /api/twin/* to downstream microservices
 - Verify JWT for protected loan routes
 - Apply rate limiting (SlowAPI)
 - Structured request logging
@@ -22,7 +22,15 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from middleware.logging_middleware import RequestLoggingMiddleware
-from routes import advisor_routes, auth_routes, fraud_routes, loan_routes, trust_routes
+from routes import (
+    advisor_routes,
+    auth_routes,
+    fraud_routes,
+    loan_routes,
+    monitoring_routes,
+    trust_routes,
+    twin_routes,
+)
 from utils.config import get_settings
 from utils.cors import ALLOWED_ORIGINS, apply_cors_headers
 from utils.limiter import limiter
@@ -130,6 +138,8 @@ app.include_router(loan_routes.router)
 app.include_router(trust_routes.router)
 app.include_router(advisor_routes.router)
 app.include_router(fraud_routes.router)
+app.include_router(twin_routes.router)
+app.include_router(monitoring_routes.router)
 
 
 @app.get("/health", tags=["health"])

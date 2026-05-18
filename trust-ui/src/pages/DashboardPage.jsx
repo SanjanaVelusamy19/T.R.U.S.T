@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Activity, ArrowUpRight, Gauge, Radar, ScanEye, ShieldCheck, Sparkles } from "lucide-react";
+import { Activity, ArrowUpRight, Gauge, Orbit, Radar, ScanEye, ShieldCheck, Sparkles } from "lucide-react";
 import { AIAdvisorPanel } from "../components/advisor/AIAdvisorPanel.jsx";
 import { TrustGraphDashboard } from "../components/analytics/TrustGraphDashboard.jsx";
+import { DigitalTwinPanel } from "../components/digital-twin/DigitalTwinPanel.jsx";
 import { FraudSecurityPanel } from "../components/fraud/FraudSecurityPanel.jsx";
 import { GlassCard } from "../components/GlassCard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { fetchAdvisorSummary } from "../services/advisorApi.js";
 import { fetchFraudAnalysis } from "../services/fraudApi.js";
+import { fetchTwinForecast, fetchTwinScenarios } from "../services/twinApi.js";
 import { fetchTrustDashboard } from "../services/trustAnalytics.js";
 
 export function DashboardPage() {
@@ -21,6 +23,12 @@ export function DashboardPage() {
   const [fraud, setFraud] = useState(null);
   const [fraudLoading, setFraudLoading] = useState(true);
   const [fraudError, setFraudError] = useState("");
+  const [twin, setTwin] = useState(null);
+  const [twinScenarios, setTwinScenarios] = useState(null);
+  const [twinLoading, setTwinLoading] = useState(true);
+  const [twinScenarioLoading, setTwinScenarioLoading] = useState(false);
+  const [twinError, setTwinError] = useState("");
+  const [activeTwinScenario, setActiveTwinScenario] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +108,53 @@ export function DashboardPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTwin() {
+      setTwinLoading(true);
+      setTwinError("");
+      try {
+        const [forecastData, scenarioData] = await Promise.all([
+          fetchTwinForecast(),
+          fetchTwinScenarios(),
+        ]);
+        if (!cancelled) {
+          setTwin(forecastData);
+          setTwinScenarios(scenarioData);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setTwinError(
+            err.message ||
+              "Unable to load digital twin forecast. Ensure digital-twin-service is running on port 8007.",
+          );
+        }
+      } finally {
+        if (!cancelled) setTwinLoading(false);
+      }
+    }
+
+    loadTwin();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleTwinScenario(scenarioId) {
+    setActiveTwinScenario(scenarioId);
+    setTwinScenarioLoading(true);
+    setTwinError("");
+    try {
+      const data = await fetchTwinForecast(scenarioId);
+      setTwin(data);
+    } catch (err) {
+      setTwinError(err.message || "Scenario simulation failed.");
+    } finally {
+      setTwinScenarioLoading(false);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -133,7 +188,7 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <GlassCard className="relative overflow-hidden">
           <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-cyan-400/20 blur-2xl" />
           <div className="flex items-center justify-between gap-3">
@@ -203,11 +258,35 @@ export function DashboardPage() {
             <ScanEye className="h-9 w-9 text-rose-300" />
           </div>
         </GlassCard>
+
+        <GlassCard className="relative overflow-hidden">
+          <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-fuchsia-500/25 blur-2xl" />
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                Future modeling
+              </p>
+              <p className="mt-2 text-lg font-semibold text-white">Digital twin</p>
+              <p className="mt-1 text-xs text-slate-400">Trust & savings forecast</p>
+            </div>
+            <Orbit className="h-9 w-9 text-fuchsia-300" />
+          </div>
+        </GlassCard>
       </div>
 
       <AIAdvisorPanel data={advisor} loading={advisorLoading} error={advisorError} />
 
       <FraudSecurityPanel data={fraud} loading={fraudLoading} error={fraudError} />
+
+      <DigitalTwinPanel
+        forecast={twin}
+        scenarios={twinScenarios}
+        loading={twinLoading}
+        scenarioLoading={twinScenarioLoading}
+        error={twinError}
+        activeScenario={activeTwinScenario}
+        onScenarioSelect={handleTwinScenario}
+      />
 
       <TrustGraphDashboard data={analytics} loading={loading} error={error} showScore />
 

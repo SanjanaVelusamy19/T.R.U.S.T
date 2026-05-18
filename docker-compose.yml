@@ -44,6 +44,16 @@ services:
     depends_on:
       - trust-score-service
 
+  digital-twin-service:
+    build: ./digital-twin-service
+    container_name: trust-digital-twin-service
+    environment:
+      TRUST_SCORE_SERVICE_URL: ${TRUST_SCORE_SERVICE_URL:-http://trust-score-service:8003}
+    ports:
+      - "8007:8007"
+    depends_on:
+      - trust-score-service
+
   gateway:
     build: ./gateway
     container_name: trust-api-gateway
@@ -53,6 +63,7 @@ services:
       TRUST_SCORE_SERVICE_URL: ${TRUST_SCORE_SERVICE_URL:-http://trust-score-service:8003}
       ADVISOR_SERVICE_URL: ${ADVISOR_SERVICE_URL:-http://advisor-service:8004}
       FRAUD_DETECTION_SERVICE_URL: ${FRAUD_DETECTION_SERVICE_URL:-http://fraud-detection-service:8005}
+      DIGITAL_TWIN_SERVICE_URL: ${DIGITAL_TWIN_SERVICE_URL:-http://digital-twin-service:8007}
       JWT_SECRET: ${JWT_SECRET}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       RATE_LIMIT_DEFAULT: ${RATE_LIMIT_DEFAULT:-100/minute}
@@ -64,6 +75,7 @@ services:
       - trust-score-service
       - advisor-service
       - fraud-detection-service
+      - digital-twin-service
 
   trust-ui:
     build:

@@ -12,6 +12,7 @@ GATEWAY = "http://127.0.0.1:8000"
 TRUST = "http://127.0.0.1:8003"
 AUTH = "http://127.0.0.1:8001"
 FRAUD = "http://127.0.0.1:8005"
+TWIN = "http://127.0.0.1:8007"
 
 
 def get(url: str, headers: dict | None = None) -> tuple[int, dict | list | str]:
@@ -86,6 +87,16 @@ def main() -> int:
         failures.append(f"fraud-detection /fraud/analysis -> {code}")
     print(f"fraud-detection /fraud/analysis: {code}")
 
+    code, body = get(f"{TWIN}/health")
+    if code != 200:
+        failures.append(f"digital-twin /health -> {code}")
+    print(f"digital-twin /health: {code}")
+
+    code, body = get(f"{TWIN}/twin/forecast")
+    if code != 200 or not isinstance(body, dict) or "projected_trust_score" not in body:
+        failures.append(f"digital-twin /twin/forecast -> {code}")
+    print(f"digital-twin /twin/forecast: {code}")
+
     code, body = get(f"{GATEWAY}/health")
     if code != 200:
         failures.append(f"gateway /health -> {code}")
@@ -121,6 +132,16 @@ def main() -> int:
                 not isinstance(fraud_body, dict) or "fraud_risk_score" not in fraud_body
             ):
                 failures.append("gateway /api/fraud/analysis missing fraud_risk_score")
+
+        for path in ("/forecast", "/trust-projection", "/risk-simulation", "/savings-growth", "/scenarios"):
+            c, twin_body = get(f"{GATEWAY}/api/twin{path}", headers)
+            print(f"gateway /api/twin{path}: {c}")
+            if c != 200:
+                failures.append(f"gateway /api/twin{path} -> {c}")
+            elif path == "/forecast" and (
+                not isinstance(twin_body, dict) or "projected_trust_score" not in twin_body
+            ):
+                failures.append("gateway /api/twin/forecast missing projected_trust_score")
 
     if failures:
         print("\nFAILED:")
