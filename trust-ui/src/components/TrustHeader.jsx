@@ -10,8 +10,24 @@ const linkClass = ({ isActive }) =>
       : "text-slate-300 hover:bg-slate-800/60 hover:text-white",
   ].join(" ");
 
-export function TrustHeader() {
+export function TrustHeader({ minimal = false }) {
   const { isAuthenticated, user, logout } = useAuth();
+
+  if (minimal) {
+    return (
+      <header className="relative z-20 px-4 py-6 sm:px-6">
+        <Link to="/" className="inline-flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-fuchsia-500 shadow-[0_0_30px_rgba(34,211,238,0.45)]">
+            <Shield className="h-5 w-5 text-slate-950" aria-hidden />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200/80">TRUST</p>
+            <p className="text-sm font-semibold text-white">Command Center</p>
+          </div>
+        </Link>
+      </header>
+    );
+  }
 
   return (
     <header className="relative z-20 border-b border-slate-800/80 bg-slate-950/40 backdrop-blur-xl">

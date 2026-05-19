@@ -1,4 +1,5 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
+import { WorkspaceLayout } from "../layout/WorkspaceLayout.jsx";
 import { LoadingSpinner } from "./LoadingSpinner.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -8,10 +9,10 @@ export function ProtectedRoute() {
 
   if (bootstrapping) {
     return (
-      <div className="mx-auto flex min-h-[60vh] max-w-lg items-center justify-center">
-        <GlassWrap>
+      <div className="relative flex min-h-screen items-center justify-center">
+        <div className="glass-panel w-full max-w-lg rounded-2xl p-8">
           <LoadingSpinner label="Validating institutional session…" />
-        </GlassWrap>
+        </div>
       </div>
     );
   }
@@ -20,11 +21,5 @@ export function ProtectedRoute() {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  return <Outlet />;
-}
-
-function GlassWrap({ children }) {
-  return (
-    <div className="glass-panel w-full rounded-2xl p-8">{children}</div>
-  );
+  return <WorkspaceLayout />;
 }

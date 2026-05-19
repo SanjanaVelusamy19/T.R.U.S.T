@@ -270,3 +270,112 @@ body {
 .twin-trust-line {
   filter: drop-shadow(0 0 6px rgba(232, 121, 249, 0.45));
 }
+
+/* Command center shell */
+.command-center-root {
+  background: var(--color-trust-bg);
+}
+
+.command-sidebar {
+  box-shadow: 4px 0 40px rgba(2, 6, 23, 0.5);
+}
+
+.command-topbar {
+  box-shadow: 0 1px 0 rgba(34, 211, 238, 0.06);
+}
+
+.workspace-main {
+  background:
+    radial-gradient(circle at 10% 20%, rgba(34, 211, 238, 0.04), transparent 35%),
+    radial-gradient(circle at 90% 80%, rgba(167, 139, 250, 0.05), transparent 30%);
+}
+
+.widget-shell {
+  border-color: rgba(148, 163, 184, 0.15);
+}
+
+.widget-shell:hover {
+  border-color: rgba(34, 211, 238, 0.25);
+}
+
+.widget-shell {
+  min-height: 200px;
+}
+
+[data-trust-theme="executive"] body {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(71, 85, 105, 0.08), transparent 40%),
+    radial-gradient(circle at 80% 0%, rgba(100, 116, 139, 0.06), transparent 35%),
+    var(--color-trust-bg);
+}
+
+[data-trust-theme="executive"] .widget-shell:hover,
+[data-trust-theme="executive"] .glass-panel {
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.6) inset,
+    0 12px 40px rgba(2, 6, 23, 0.5);
+}
+
+[data-trust-neon="off"] .trust-pulse,
+[data-trust-neon="off"] .heartbeat-ring {
+  animation: none;
+}
+
+[data-trust-neon="off"] .widget-shell:hover {
+  box-shadow: none;
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+@keyframes heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.7;
+  }
+}
+
+.heartbeat-ring {
+  animation: heartbeat 1.2s ease-in-out infinite;
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.6);
+}
+
+.ecosystem-heartbeat {
+  animation: chart-enter 0.5s ease-out;
+}
+
+.status-dock {
+  box-shadow: 0 -1px 0 rgba(34, 211, 238, 0.08);
+}
+
+.command-palette input::placeholder {
+  color: rgb(100 116 139);
+}
+
+.command-search:focus-within {
+  border-color: rgba(34, 211, 238, 0.4);
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.12);
+}
+
+@keyframes widget-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.widget-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(30, 41, 59, 0.4) 0%,
+    rgba(51, 65, 85, 0.6) 50%,
+    rgba(30, 41, 59, 0.4) 100%
+  );
+  background-size: 200% 100%;
+  animation: widget-shimmer 1.5s ease-in-out infinite;
+}
