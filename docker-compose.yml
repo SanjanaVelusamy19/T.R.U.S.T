@@ -54,6 +54,14 @@ services:
     depends_on:
       - trust-score-service
 
+  monitoring-service:
+    build: ./monitoring-service
+    container_name: trust-monitoring-service
+    ports:
+      - "8006:8006"
+    env_file:
+      - ./monitoring-service/.env    
+
   gold-loan-service:
     build: ./gold-loan-service
     container_name: trust-gold-loan-service
