@@ -1,12 +1,5 @@
 """
 TRUST API Gateway — single entry point for the TRUST fintech platform.
-
-Responsibilities:
-- Route /api/auth/*, /api/loan/*, /api/trust/*, /api/advisor/*, /api/fraud/*, and /api/twin/* to downstream microservices
-- Verify JWT for protected loan routes
-- Apply rate limiting (SlowAPI)
-- Structured request logging
-- Centralized error responses
 """
 
 import logging
@@ -26,14 +19,13 @@ from routes import (
     advisor_routes,
     auth_routes,
     fraud_routes,
-    loan_routes,
     gold_loan_routes,
+    loan_routes,
     monitoring_routes,
     trust_routes,
     twin_routes,
 )
 from utils.config import get_settings
-from utils.cors import ALLOWED_ORIGINS, apply_cors_headers
 from utils.limiter import limiter
 
 logging.basicConfig(
@@ -41,6 +33,7 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
 )
+
 logger = logging.getLogger("trust.gateway")
 
 settings = get_settings()
@@ -52,30 +45,77 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
 app.state.limiter = limiter
 
 
-async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
-    response = _rate_limit_exceeded_handler(request, exc)
-    if isinstance(response, JSONResponse):
-        return apply_cors_headers(request, response)
-    return apply_cors_headers(request, JSONResponse(status_code=429, content={"success": False, "error": "rate_limit_exceeded", "message": str(exc)}))
+# =========================
+# CORS CONFIGURATION
+# =========================
+
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "https://t-r-u-s-t.vercel.app",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-Request-Id"],
+)
+
+# =========================
+# MIDDLEWARES
+# =========================
+
+app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
+
+
+# =========================
+# RATE LIMIT HANDLER
+# =========================
+
+async def rate_limit_handler(
+    request: Request,
+    exc: RateLimitExceeded,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=429,
+        content={
+            "success": False,
+            "error": "rate_limit_exceeded",
+            "message": str(exc),
+        },
+        headers={
+            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+            "Access-Control-Allow-Credentials": "true",
+        },
+    )
 
 
 app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
-app.add_middleware(SlowAPIMiddleware)
 
+
+# =========================
+# HTTP ERROR HANDLER
+# =========================
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(
     request: Request,
     exc: HTTPException,
 ) -> JSONResponse:
-    """Normalize HTTP errors raised by gateway dependencies and filters."""
+
     request_id = getattr(request.state, "request_id", None)
+
     detail = exc.detail
-    message = detail if isinstance(detail, str) else "Request could not be completed"
-    response = JSONResponse(
+    message = detail if isinstance(detail, str) else "Request failed"
+
+    return JSONResponse(
         status_code=exc.status_code,
         content={
             "success": False,
@@ -84,17 +124,24 @@ async def http_exception_handler(
             "detail": detail,
             "request_id": request_id,
         },
+        headers={
+            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+            "Access-Control-Allow-Credentials": "true",
+        },
     )
-    return apply_cors_headers(request, response)
 
+
+# =========================
+# VALIDATION ERROR HANDLER
+# =========================
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(
     request: Request,
     exc: RequestValidationError,
 ) -> JSONResponse:
-    """Normalize validation errors to a stable JSON shape for clients."""
-    response = JSONResponse(
+
+    return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
             "success": False,
@@ -102,37 +149,49 @@ async def validation_exception_handler(
             "detail": exc.errors(),
             "message": "Request validation failed",
         },
+        headers={
+            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+            "Access-Control-Allow-Credentials": "true",
+        },
     )
-    return apply_cors_headers(request, response)
 
+
+# =========================
+# GLOBAL ERROR HANDLER
+# =========================
 
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Catch-all handler to avoid leaking internals while returning a trace id."""
+async def unhandled_exception_handler(
+    request: Request,
+    exc: Exception,
+) -> JSONResponse:
+
     request_id = getattr(request.state, "request_id", None)
-    logger.exception("Unhandled error path=%s id=%s", request.url.path, request_id)
-    response = JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+
+    logger.exception(
+        "Unhandled error path=%s id=%s",
+        request.url.path,
+        request_id,
+    )
+
+    return JSONResponse(
+        status_code=500,
         content={
             "success": False,
             "error": "internal_server_error",
-            "message": "An unexpected error occurred. Please try again later.",
+            "message": "An unexpected error occurred.",
             "request_id": request_id,
         },
+        headers={
+            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+            "Access-Control-Allow-Credentials": "true",
+        },
     )
-    return apply_cors_headers(request, response)
 
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=list(ALLOWED_ORIGINS),
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["X-Request-Id"],
-)
-
-app.add_middleware(RequestLoggingMiddleware)
+# =========================
+# ROUTES
+# =========================
 
 app.include_router(auth_routes.router)
 app.include_router(loan_routes.router)
@@ -144,12 +203,21 @@ app.include_router(monitoring_routes.router)
 app.include_router(gold_loan_routes.router)
 
 
+# =========================
+# HEALTH ENDPOINTS
+# =========================
+
 @app.get("/health", tags=["health"])
 async def health() -> dict[str, Any]:
-    """Liveness probe for orchestrators and load balancers."""
-    return {"status": "healthy", "service": "gateway"}
+    return {
+        "status": "healthy",
+        "service": "gateway",
+    }
 
 
 @app.get("/", tags=["health"])
 async def root() -> dict[str, str]:
-    return {"service": settings.app_name, "docs": "/docs"}
+    return {
+        "service": settings.app_name,
+        "docs": "/docs",
+    }
