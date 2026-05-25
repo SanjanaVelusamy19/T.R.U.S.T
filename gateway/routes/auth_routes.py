@@ -12,15 +12,15 @@ from fastapi import (
     APIRouter,
     HTTPException,
     Request,
-    Response,
     status,
 )
 
 from pydantic import BaseModel
+from fastapi.responses import JSONResponse
 
 from utils.config import get_settings
 from utils.limiter import limiter
-from fastapi.responses import JSONResponse
+from utils.proxy_response import downstream_json_response
 
 router = APIRouter(
     prefix="/api/auth",
@@ -52,19 +52,19 @@ class LoginRequest(BaseModel):
 async def _forward(
     request: Request,
     path: str,
-) -> Response:
+    body: dict | None = None,
+) -> JSONResponse:
 
     base_url = settings.auth_service_url.rstrip("/")
 
     url = f"{base_url}{path}"
+    logger.info("Proxy request downstream_url=%s method=%s", url, request.method)
 
-    try:
-        body = await request.json()
-    except Exception:
-        body = None
-
-    # IMPORTANT:
-    # forward auth header if present
+    if body is None:
+        try:
+            body = await request.json()
+        except Exception:
+            body = None
 
     headers = {}
 
@@ -88,20 +88,8 @@ async def _forward(
         async with httpx.AsyncClient(timeout=30.0) as client:
 
             resp = await client.request(**kwargs)
-            logger.info("Proxy SUCCESS downstream_url=%s status=%s", url, resp.status_code)
 
-        # IMPORTANT:
-        # Return RAW downstream response
-        # DO NOT parse JSON manually
-
-        return Response(
-            content=resp.content,
-            status_code=resp.status_code,
-            media_type=resp.headers.get(
-                "content-type",
-                "application/json",
-            ),
-        )
+        return downstream_json_response(resp, downstream_url=url)
 
     except httpx.RequestError as exc:
         logger.error("Proxy FAILURE downstream_url=%s error=%s", url, str(exc))
@@ -120,11 +108,12 @@ async def _forward(
 async def proxy_register(
     payload: RegisterRequest,
     request: Request,
-) -> Response:
+) -> JSONResponse:
 
     return await _forward(
         request,
         "/register",
+        body=payload.model_dump(),
     )
 
 
@@ -137,11 +126,12 @@ async def proxy_register(
 async def proxy_login(
     payload: LoginRequest,
     request: Request,
-) -> Response:
+) -> JSONResponse:
 
     return await _forward(
         request,
         "/login",
+        body=payload.model_dump(),
     )
 
 
@@ -153,7 +143,7 @@ async def proxy_login(
 @limiter.limit(settings.rate_limit_default)
 async def proxy_verify_token(
     request: Request,
-) -> Response:
+) -> JSONResponse:
 
     return await _forward(
         request,

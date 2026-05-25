@@ -14,6 +14,7 @@ from middleware.jwt_middleware import require_jwt
 from utils.config import get_settings
 from utils.cors import apply_cors_headers
 from utils.limiter import limiter
+from utils.proxy_response import downstream_json_response
 
 router = APIRouter(prefix="/api/advisor", tags=["advisor-proxy"])
 
@@ -43,7 +44,8 @@ def _error_response(
 async def _proxy_to_advisor_service(request: Request, downstream_path: str) -> Response:
     base = settings.advisor_service_url.rstrip("/")
     url = f"{base}{downstream_path}"
-    
+    logger.info("Proxy request downstream_url=%s method=%s", url, request.method)
+
     try:
         body = await request.json()
     except Exception:
@@ -66,12 +68,8 @@ async def _proxy_to_advisor_service(request: Request, downstream_path: str) -> R
             
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.request(**kwargs)
-            logger.info("Proxy SUCCESS downstream_url=%s status=%s", url, resp.status_code)
-            
-        return JSONResponse(
-            status_code=resp.status_code,
-            content=resp.json(),
-        )
+
+        return downstream_json_response(resp, downstream_url=url)
     except httpx.RequestError as exc:
         logger.error("Proxy FAILURE downstream_url=%s error=%s", url, str(exc))
         raise HTTPException(

@@ -107,11 +107,13 @@ def login(payload: LoginRequest, db: Annotated[Session, Depends(get_db)]) -> dic
     """Authenticate user and return a JWT access token."""
     user = db.query(User).filter(User.email == payload.email.lower()).first()
     if not user or not verify_password(payload.password, user.hashed_password):
+        logger.warning("Login failed for email=%s", payload.email.lower())
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
 
+    logger.info("Login successful for user_id=%s email=%s", user.id, user.email)
     token = create_access_token(
         subject=str(user.id),
         extra_claims={"email": user.email, "full_name": user.full_name},

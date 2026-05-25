@@ -6,12 +6,12 @@ JWT is verified at the gateway before forwarding.
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.responses import JSONResponse
 logger = logging.getLogger("trust.gateway.loan")
 
 from middleware.jwt_middleware import require_jwt
 from utils.config import get_settings
 from utils.limiter import limiter
+from utils.proxy_response import downstream_json_response
 
 router = APIRouter(prefix="/api/loan", tags=["loan-proxy"])
 
@@ -21,7 +21,8 @@ settings = get_settings()
 async def _proxy_to_loan_service(request: Request, downstream_path: str) -> Response:
     base = settings.loan_service_url.rstrip("/")
     url = f"{base}{downstream_path}"
-    
+    logger.info("Proxy request downstream_url=%s method=%s", url, request.method)
+
     try:
         body = await request.json()
     except Exception:
@@ -44,12 +45,8 @@ async def _proxy_to_loan_service(request: Request, downstream_path: str) -> Resp
             
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.request(**kwargs)
-            logger.info("Proxy SUCCESS downstream_url=%s status=%s", url, resp.status_code)
-            
-        return JSONResponse(
-            status_code=resp.status_code,
-            content=resp.json(),
-        )
+
+        return downstream_json_response(resp, downstream_url=url)
     except httpx.RequestError as exc:
         logger.error("Proxy FAILURE downstream_url=%s error=%s", url, str(exc))
         raise HTTPException(

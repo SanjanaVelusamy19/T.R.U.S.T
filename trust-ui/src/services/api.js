@@ -15,6 +15,13 @@ export const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("trust_token");
+  console.debug(
+    "[TRUST API]",
+    config.method?.toUpperCase(),
+    config.url,
+    "token:",
+    token ? "present" : "missing",
+  );
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -28,6 +35,10 @@ api.interceptors.response.use(
     if (status === 401) {
       localStorage.removeItem("trust_token");
       localStorage.removeItem("trust_user");
+      const path = window.location.pathname;
+      if (path !== "/login" && path !== "/register") {
+        window.location.replace("/login");
+      }
     }
     return Promise.reject(error);
   },

@@ -5,9 +5,32 @@ Loads environment variables with sensible defaults for local development.
 
 from functools import lru_cache
 from typing import Any
+from urllib.parse import urlparse
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_SERVICE_URL_FIELDS = (
+    "auth_service_url",
+    "loan_service_url",
+    "trust_score_service_url",
+    "advisor_service_url",
+    "fraud_detection_service_url",
+    "digital_twin_service_url",
+    "monitoring_service_url",
+    "gold_loan_service_url",
+)
+
+
+def _strip_url_path(url: str) -> str:
+    """Keep scheme + host only; gateway appends paths internally."""
+    cleaned = url.strip().rstrip("/")
+    parsed = urlparse(cleaned)
+    if not parsed.scheme or not parsed.netloc:
+        return cleaned
+    if parsed.path and parsed.path != "/":
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return cleaned
 
 
 class Settings(BaseSettings):
@@ -56,6 +79,15 @@ class Settings(BaseSettings):
             if legacy_rate:
                 normalized["RATE_LIMIT_DEFAULT"] = legacy_rate
         return normalized
+
+    @model_validator(mode="after")
+    def _normalize_service_base_urls(self) -> "Settings":
+        """Ensure downstream base URLs have no path segments."""
+        for field in _SERVICE_URL_FIELDS:
+            value = getattr(self, field, None)
+            if isinstance(value, str) and value:
+                object.__setattr__(self, field, _strip_url_path(value))
+        return self
 
 
 @lru_cache

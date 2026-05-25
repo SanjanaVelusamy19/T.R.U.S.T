@@ -32,7 +32,8 @@ export function LoginPage() {
       loginWithToken(data.access_token, data.user);
       navigate(from, { replace: true });
     } catch (err) {
-      const detail = err.response?.data?.detail || err.response?.data?.error;
+      const data = err.response?.data;
+      const detail = data?.detail || data?.message || data?.error;
       setError(typeof detail === "string" ? detail : "Unable to authenticate.");
     } finally {
       setLoading(false);
