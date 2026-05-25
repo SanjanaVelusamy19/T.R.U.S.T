@@ -29,10 +29,8 @@ async def _forward(request: Request, path: str) -> Response:
     body = await request.body()
 
     headers = {
-        k: v
-        for k, v in request.headers.items()
-        if k.lower() not in {"host", "content-length"}
-    }
+    "content-type": "application/json"
+   }
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
