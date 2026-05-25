@@ -1,9 +1,12 @@
+import logging
 """
 Proxy routes for the Auth microservice
 (registration, login, token verification).
 """
 
 import httpx
+
+logger = logging.getLogger("trust.gateway.auth")
 
 from fastapi import (
     APIRouter,
@@ -85,6 +88,7 @@ async def _forward(
         async with httpx.AsyncClient(timeout=30.0) as client:
 
             resp = await client.request(**kwargs)
+            logger.info("Proxy SUCCESS downstream_url=%s status=%s", url, resp.status_code)
 
         # IMPORTANT:
         # Return RAW downstream response
@@ -100,7 +104,7 @@ async def _forward(
         )
 
     except httpx.RequestError as exc:
-
+        logger.error("Proxy FAILURE downstream_url=%s error=%s", url, str(exc))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Auth service unavailable: {str(exc)}",

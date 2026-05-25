@@ -1,3 +1,4 @@
+import logging
 """
 Protected proxy routes for the Loan microservice.
 JWT is verified at the gateway before forwarding.
@@ -5,6 +6,8 @@ JWT is verified at the gateway before forwarding.
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+
+logger = logging.getLogger("trust.gateway.loan")
 
 from middleware.jwt_middleware import require_jwt
 from utils.config import get_settings
@@ -38,15 +41,22 @@ async def proxy_check_loan(
                 url,
                 content=body if body else None,
                 headers=headers,
+                params=request.query_params,
             )
+            logger.info("Proxy SUCCESS downstream_url=%s status=%s", url, resp.status_code)
 
         return Response(
             content=resp.content,
             status_code=resp.status_code,
+            headers={
+                k: v for k, v in resp.headers.items()
+                if k.lower() not in {"content-length", "content-encoding", "transfer-encoding"}
+            },
             media_type=resp.headers.get("content-type", "application/json"),
         )
     except httpx.RequestError as exc:
+        logger.error("Proxy FAILURE downstream_url=%s error=%s", url, str(exc))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Downstream loan service unavailable: {str(exc)}",
+            detail=f"Downstream service unavailable: {str(exc)}",
         )

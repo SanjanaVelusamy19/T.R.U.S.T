@@ -58,6 +58,7 @@ async def _proxy_to_monitoring_service(request: Request, downstream_path: str) -
                 headers=headers,
                 params=request.query_params,
             )
+            logger.info("Proxy SUCCESS downstream_url=%s status=%s", url, resp.status_code)
     except httpx.TimeoutException:
         logger.error("Monitoring service timeout url=%s", url)
         return _error_response(
@@ -85,38 +86,14 @@ async def _proxy_to_monitoring_service(request: Request, downstream_path: str) -
             detail=str(exc),
         )
 
-    content_type = resp.headers.get("content-type", "application/json")
-    if resp.status_code >= 500:
-        logger.error(
-            "Monitoring service returned %s for %s body=%s",
-            resp.status_code,
-            downstream_path,
-            resp.text[:500],
-        )
-        return _error_response(
-            request,
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            error="monitoring_service_error",
-            message="Monitoring service returned an error",
-            detail=resp.text[:500] if resp.text else None,
-        )
-
-    if content_type.startswith("application/json") and resp.content:
-        try:
-            json.loads(resp.content)
-        except json.JSONDecodeError:
-            logger.error("Monitoring service returned invalid JSON for %s", downstream_path)
-            return _error_response(
-                request,
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                error="invalid_downstream_response",
-                message="Monitoring service returned invalid JSON",
-            )
-
     response = Response(
         content=resp.content,
         status_code=resp.status_code,
-        media_type=content_type,
+        headers={
+            k: v for k, v in resp.headers.items()
+            if k.lower() not in {"content-length", "content-encoding", "transfer-encoding"}
+        },
+        media_type=resp.headers.get("content-type", "application/json"),
     )
     return apply_cors_headers(request, response)
 
