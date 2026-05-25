@@ -20,7 +20,7 @@ from pydantic import BaseModel
 
 from utils.config import get_settings
 from utils.limiter import limiter
-
+from fastapi.responses import JSONResponse
 
 router = APIRouter(
     prefix="/api/auth",

@@ -8,7 +8,7 @@ import logging
 
 import httpx
 from fastapi import APIRouter, HTTPException, Depends, Request, Response, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response as FastAPIResponse
 
 from middleware.jwt_middleware import require_jwt
 from utils.config import get_settings
@@ -68,11 +68,11 @@ async def _proxy_to_twin_service(request: Request, downstream_path: str) -> Resp
             resp = await client.request(**kwargs)
             logger.info("Proxy SUCCESS downstream_url=%s status=%s", url, resp.status_code)
             
-        return Response(
-            content=resp.content,
+        return JSONResponse(
             status_code=resp.status_code,
-            media_type=resp.headers.get("content-type", "application/json"),
+            content=resp.json(),
         )
+        
     except httpx.RequestError as exc:
         logger.error("Proxy FAILURE downstream_url=%s error=%s", url, str(exc))
         raise HTTPException(
