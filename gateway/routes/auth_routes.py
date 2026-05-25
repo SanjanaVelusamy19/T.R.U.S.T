@@ -1,12 +1,25 @@
 """
-Proxy routes for the Auth microservice (registration, login, token verification).
+Proxy routes for the Auth microservice
+(registration, login, token verification).
 """
 
 import httpx
-from fastapi import APIRouter, HTTPException, Request, Response, status
+
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    Request,
+    Response,
+    status,
+)
+
 from fastapi.responses import JSONResponse
+
+from pydantic import BaseModel
+
 from utils.config import get_settings
 from utils.limiter import limiter
+
 
 router = APIRouter(
     prefix="/api/auth",
@@ -16,9 +29,36 @@ router = APIRouter(
 settings = get_settings()
 
 
-async def _forward(request: Request, path: str) -> Response:
+# =========================================================
+# REQUEST SCHEMAS
+# =========================================================
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    full_name: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+# =========================================================
+# FORWARD FUNCTION
+# =========================================================
+
+async def _forward(
+    request: Request,
+    path: str,
+) -> Response:
 
     base_url = settings.auth_service_url.rstrip("/")
+
+    # auth-service routes:
+    # /register
+    # /login
+    # /verify-token
 
     url = f"{base_url}{path}"
 
@@ -32,6 +72,7 @@ async def _forward(request: Request, path: str) -> Response:
     }
 
     try:
+
         async with httpx.AsyncClient(timeout=30.0) as client:
 
             resp = await client.request(
@@ -42,9 +83,17 @@ async def _forward(request: Request, path: str) -> Response:
                 params=request.query_params,
             )
 
+        try:
+            response_content = resp.json()
+        except Exception:
+            response_content = {
+                "success": False,
+                "message": resp.text,
+            }
+
         return JSONResponse(
             status_code=resp.status_code,
-            content=resp.json(),
+            content=response_content,
         )
 
     except httpx.RequestError as exc:
@@ -55,31 +104,51 @@ async def _forward(request: Request, path: str) -> Response:
         )
 
 
-@router.api_route(
-    "/register",
-    methods=["POST", "OPTIONS"],
-)
+# =========================================================
+# REGISTER
+# =========================================================
+
+@router.post("/register")
 @limiter.limit(settings.rate_limit_default)
-async def proxy_register(request: Request) -> Response:
+async def proxy_register(
+    payload: RegisterRequest,
+    request: Request,
+) -> Response:
 
-    return await _forward(request, "/register")
+    return await _forward(
+        request,
+        "/register",
+    )
 
 
-@router.api_route(
-    "/login",
-    methods=["POST", "OPTIONS"],
-)
+# =========================================================
+# LOGIN
+# =========================================================
+
+@router.post("/login")
 @limiter.limit(settings.rate_limit_default)
-async def proxy_login(request: Request) -> Response:
+async def proxy_login(
+    payload: LoginRequest,
+    request: Request,
+) -> Response:
 
-    return await _forward(request, "/login")
+    return await _forward(
+        request,
+        "/login",
+    )
 
 
-@router.api_route(
-    "/verify-token",
-    methods=["GET", "OPTIONS"],
-)
+# =========================================================
+# VERIFY TOKEN
+# =========================================================
+
+@router.get("/verify-token")
 @limiter.limit(settings.rate_limit_default)
-async def proxy_verify_token(request: Request) -> Response:
+async def proxy_verify_token(
+    request: Request,
+) -> Response:
 
-    return await _forward(request, "/verify-token")
+    return await _forward(
+        request,
+        "/verify-token",
+    )
