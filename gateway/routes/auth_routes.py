@@ -24,7 +24,7 @@ async def _forward(request: Request, path: str) -> Response:
     base_url = settings.auth_service_url.rstrip("/")
 
     # IMPORTANT FIX
-    url = f"{base_url}/api/auth{path}"
+    url = f"{base_url}{path}"
 
     body = await request.body()
 
