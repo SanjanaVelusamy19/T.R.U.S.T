@@ -5,6 +5,7 @@ Request/response logging middleware for observability and audit trails.
 import logging
 import time
 import uuid
+from datetime import datetime, timezone
 from typing import Callable
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -22,9 +23,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         request.state.request_id = request_id
 
         start = time.perf_counter()
+        timestamp = datetime.now(timezone.utc).isoformat()
         logger.info(
-            "request.start id=%s method=%s path=%s client=%s",
+            "request.start id=%s at=%s method=%s path=%s client=%s",
             request_id,
+            timestamp,
             request.method,
             request.url.path,
             request.client.host if request.client else "unknown",
@@ -45,8 +48,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         duration_ms = (time.perf_counter() - start) * 1000
         logger.info(
-            "request.end id=%s method=%s path=%s status=%s duration_ms=%.2f",
+            "request.end id=%s at=%s method=%s path=%s status=%s duration_ms=%.2f",
             request_id,
+            datetime.now(timezone.utc).isoformat(),
             request.method,
             request.url.path,
             response.status_code,

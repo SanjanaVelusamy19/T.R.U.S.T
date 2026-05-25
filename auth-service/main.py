@@ -8,8 +8,10 @@ from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import bcrypt
 from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from database import get_db, init_db
@@ -66,13 +68,16 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 @app.post("/register", status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterRequest, db: Annotated[Session, Depends(get_db)]) -> dict[str, Any]:
+def register(payload: RegisterRequest, db: Annotated[Session, Depends(get_db)]) -> dict[str, Any] | JSONResponse:
     """Create a new user account with a bcrypt-hashed password."""
+    logger.info("REGISTER RECEIVED email=%s", payload.email.lower())
+
     existing = db.query(User).filter(User.email == payload.email.lower()).first()
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered",
+        logger.warning("REGISTER duplicate email=%s", payload.email.lower())
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": "User already exists"},
         )
 
     user = User(
@@ -81,7 +86,15 @@ def register(payload: RegisterRequest, db: Annotated[Session, Depends(get_db)]) 
         hashed_password=hash_password(payload.password),
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        logger.warning("REGISTER duplicate race email=%s", payload.email.lower())
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": "User already exists"},
+        )
     db.refresh(user)
 
     token = create_access_token(

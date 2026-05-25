@@ -21,6 +21,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+from middleware.duplicate_guard_middleware import DuplicateRequestGuardMiddleware
 from middleware.logging_middleware import RequestLoggingMiddleware
 from routes import (
     advisor_routes,
@@ -94,6 +95,7 @@ app.add_middleware(
 # CUSTOM MIDDLEWARES
 # =========================================================
 
+app.add_middleware(DuplicateRequestGuardMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 
 # SlowAPI MUST BE LAST

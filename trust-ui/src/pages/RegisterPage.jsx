@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BadgeCheck, UserPlus } from "lucide-react";
 import { GlassCard } from "../components/GlassCard.jsx";
@@ -14,6 +14,7 @@ export function RegisterPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const isSubmittingRef = useRef(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -23,8 +24,18 @@ export function RegisterPage() {
 
   async function onSubmit(e) {
     e.preventDefault();
+
+    if (loading || isSubmittingRef.current) {
+      console.debug("REQUEST BLOCKED (already submitting)");
+      return;
+    }
+
+    console.debug("REGISTER CLICKED");
+    isSubmittingRef.current = true;
     setError("");
     setLoading(true);
+    console.debug("REQUEST SENT");
+
     try {
       const { data } = await api.post("/api/auth/register", {
         full_name: fullName,
@@ -34,9 +45,11 @@ export function RegisterPage() {
       loginWithToken(data.access_token, data.user);
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      const detail = err.response?.data?.detail || err.response?.data?.error;
+      const data = err.response?.data;
+      const detail = data?.error || data?.detail || data?.message;
       setError(typeof detail === "string" ? detail : "Registration could not be completed.");
     } finally {
+      isSubmittingRef.current = false;
       setLoading(false);
     }
   }
@@ -57,7 +70,7 @@ export function RegisterPage() {
         {loading ? (
           <LoadingSpinner label="Provisioning identity and vaulting secrets…" />
         ) : (
-          <form className="space-y-5" onSubmit={onSubmit}>
+          <form className="space-y-5" onSubmit={onSubmit} noValidate>
             {error ? (
               <p className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">
                 {error}
@@ -74,6 +87,7 @@ export function RegisterPage() {
                 minLength={2}
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+                disabled={loading}
                 className="neon-ring w-full rounded-xl border border-slate-700/80 bg-slate-950/60 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400/70"
                 placeholder="Jordan Lee"
               />
@@ -88,6 +102,7 @@ export function RegisterPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
                 className="neon-ring w-full rounded-xl border border-slate-700/80 bg-slate-950/60 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-cyan-400/70"
                 placeholder="you@institution.com"
               />
@@ -103,13 +118,16 @@ export function RegisterPage() {
                 minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
                 className="neon-ring w-full rounded-xl border border-slate-700/80 bg-slate-950/60 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-fuchsia-400/70"
               />
             </div>
 
             <button
               type="submit"
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-sky-500 px-4 py-3 text-sm font-semibold text-slate-950 shadow-[0_0_32px_rgba(52,211,153,0.45)] transition hover:brightness-110"
+              disabled={loading}
+              aria-busy={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-sky-500 px-4 py-3 text-sm font-semibold text-slate-950 shadow-[0_0_32px_rgba(52,211,153,0.45)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <UserPlus className="h-4 w-4" />
               Create TRUST profile

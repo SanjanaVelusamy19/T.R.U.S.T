@@ -11,28 +11,24 @@ from fastapi.responses import JSONResponse
 logger = logging.getLogger("trust.gateway.proxy")
 
 
+def _response_content(resp: httpx.Response) -> Any:
+    content_type = (resp.headers.get("content-type") or "").lower()
+    if "application/json" in content_type:
+        try:
+            return resp.json()
+        except ValueError:
+            return {"message": resp.text[:500] if resp.text else ""}
+    return {"message": resp.text[:500] if resp.text else ""}
+
+
 def downstream_json_response(resp: httpx.Response, *, downstream_url: str) -> JSONResponse:
     """
     Build a JSONResponse from an httpx downstream response.
-
-    Logs status code; returns 500 if the body is not valid JSON.
     """
     logger.info(
         "downstream response url=%s status=%s",
         downstream_url,
         resp.status_code,
     )
-    try:
-        content: Any = resp.json()
-    except ValueError:
-        logger.error(
-            "Invalid JSON from downstream url=%s status=%s body=%s",
-            downstream_url,
-            resp.status_code,
-            resp.text[:200],
-        )
-        return JSONResponse(
-            status_code=500,
-            content={"error": "Invalid response from service"},
-        )
+    content = _response_content(resp)
     return JSONResponse(status_code=resp.status_code, content=content)

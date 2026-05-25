@@ -85,8 +85,8 @@ async def _forward(
         if body is not None:
             kwargs["json"] = body
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-
+        transport = httpx.AsyncHTTPTransport(retries=0)
+        async with httpx.AsyncClient(timeout=30.0, transport=transport) as client:
             resp = await client.request(**kwargs)
 
         return downstream_json_response(resp, downstream_url=url)
