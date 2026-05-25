@@ -13,8 +13,6 @@ from fastapi import (
     status,
 )
 
-from fastapi.responses import JSONResponse
-
 from pydantic import BaseModel
 
 from utils.config import get_settings
@@ -55,11 +53,6 @@ async def _forward(
 
     base_url = settings.auth_service_url.rstrip("/")
 
-    # auth-service routes:
-    # /register
-    # /login
-    # /verify-token
-
     url = f"{base_url}{path}"
 
     try:
@@ -67,33 +60,43 @@ async def _forward(
     except Exception:
         body = None
 
-    headers = {
-        "content-type": "application/json"
-    }
+    # IMPORTANT:
+    # forward auth header if present
+
+    headers = {}
+
+    auth_header = request.headers.get("authorization")
+
+    if auth_header:
+        headers["authorization"] = auth_header
 
     try:
 
+        kwargs = {
+            "method": request.method,
+            "url": url,
+            "headers": headers,
+            "params": request.query_params,
+        }
+
+        if body is not None:
+            kwargs["json"] = body
+
         async with httpx.AsyncClient(timeout=30.0) as client:
 
-            resp = await client.request(
-                method=request.method,
-                url=url,
-                json=body,
-                headers=headers,
-                params=request.query_params,
-            )
+            resp = await client.request(**kwargs)
 
-        try:
-            response_content = resp.json()
-        except Exception:
-            response_content = {
-                "success": False,
-                "message": resp.text,
-            }
+        # IMPORTANT:
+        # Return RAW downstream response
+        # DO NOT parse JSON manually
 
-        return JSONResponse(
+        return Response(
+            content=resp.content,
             status_code=resp.status_code,
-            content=response_content,
+            media_type=resp.headers.get(
+                "content-type",
+                "application/json",
+            ),
         )
 
     except httpx.RequestError as exc:

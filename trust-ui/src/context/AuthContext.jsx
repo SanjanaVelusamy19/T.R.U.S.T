@@ -116,10 +116,12 @@ export function AuthProvider({ children }) {
           },
         );
 
-      } catch {
+      } catch (err) {
 
         if (!cancelled) {
-          logout();
+          if (err.response && err.response.status === 401) {
+            logout();
+          }
         }
 
       } finally {
