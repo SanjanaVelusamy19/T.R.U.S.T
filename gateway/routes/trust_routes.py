@@ -7,7 +7,7 @@ import json
 import logging
 
 import httpx
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, HTTPException, Depends, Request, Response, status
 from fastapi.responses import JSONResponse
 
 from middleware.jwt_middleware import require_jwt
@@ -41,75 +41,44 @@ def _error_response(
 
 
 async def _proxy_to_trust_service(request: Request, downstream_path: str) -> Response:
-    """Forward request to trust-score-service with safe error handling."""
     base = settings.trust_score_service_url.rstrip("/")
     url = f"{base}{downstream_path}"
-
+    
     try:
-        body = await request.body()
-    except Exception as exc:
-        logger.exception("Failed to read trust proxy request body path=%s", downstream_path)
-        return _error_response(
-            request,
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error="invalid_request",
-            message="Unable to read request body",
-            detail=str(exc),
-        )
-
-    headers = {
-        k: v
-        for k, v in request.headers.items()
-        if k.lower() not in {"host", "content-length"}
-    }
-
+        body = await request.json()
+    except Exception:
+        body = None
+        
+    headers = {}
+    auth_header = request.headers.get("authorization")
+    if auth_header:
+        headers["authorization"] = auth_header
+        
     try:
+        kwargs = {
+            "method": request.method,
+            "url": url,
+            "headers": headers,
+            "params": request.query_params,
+        }
+        if body is not None:
+            kwargs["json"] = body
+            
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.request(
-                request.method,
-                url,
-                content=body if body else None,
-                headers=headers,
-                params=request.query_params,
-            )
+            resp = await client.request(**kwargs)
             logger.info("Proxy SUCCESS downstream_url=%s status=%s", url, resp.status_code)
-    except httpx.TimeoutException:
-        logger.error("Trust service timeout url=%s", url)
-        return _error_response(
-            request,
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            error="trust_service_timeout",
-            message="Trust score service did not respond in time",
+            
+        return Response(
+            content=resp.content,
+            status_code=resp.status_code,
+            media_type=resp.headers.get("content-type", "application/json"),
         )
     except httpx.RequestError as exc:
-        logger.error("Trust service unavailable url=%s error=%s", url, exc)
-        return _error_response(
-            request,
+        logger.error("Proxy FAILURE downstream_url=%s error=%s", url, str(exc))
+        raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            error="trust_service_unavailable",
-            message="Trust score service is unavailable. Start trust-score-service on port 8003.",
-            detail=str(exc),
+            detail=f"Downstream service unavailable: {str(exc)}",
         )
-    except Exception as exc:
-        logger.exception("Unexpected trust proxy failure url=%s", url)
-        return _error_response(
-            request,
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            error="trust_proxy_error",
-            message="Failed to reach trust score service",
-            detail=str(exc),
-        )
-
-    response = Response(
-        content=resp.content,
-        status_code=resp.status_code,
-        headers={
-            k: v for k, v in resp.headers.items()
-            if k.lower() not in {"content-length", "content-encoding", "transfer-encoding"}
-        },
-        media_type=resp.headers.get("content-type", "application/json"),
-    )
-    return apply_cors_headers(request, response)
 
 
 @router.api_route("/calculate", methods=["POST"])

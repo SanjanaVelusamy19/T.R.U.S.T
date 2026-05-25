@@ -18,40 +18,37 @@ router = APIRouter(prefix="/api/loan", tags=["loan-proxy"])
 settings = get_settings()
 
 
-@router.api_route("/check-loan", methods=["POST"])
-@limiter.limit(settings.rate_limit_default)
-async def proxy_check_loan(
-    request: Request,
-    _claims: dict = Depends(require_jwt),
-) -> Response:
-    """Forward loan eligibility check; requires valid JWT (verified by dependency)."""
-    url = f"{settings.loan_service_url.rstrip('/')}/check-loan"
-    body = await request.body()
-
-    headers = {
-        k: v
-        for k, v in request.headers.items()
-        if k.lower() not in {"host", "content-length"}
-    }
-
+async def _proxy_to_loan_service(request: Request, downstream_path: str) -> Response:
+    base = settings.loan_service_url.rstrip("/")
+    url = f"{base}{downstream_path}"
+    
     try:
+        body = await request.json()
+    except Exception:
+        body = None
+        
+    headers = {}
+    auth_header = request.headers.get("authorization")
+    if auth_header:
+        headers["authorization"] = auth_header
+        
+    try:
+        kwargs = {
+            "method": request.method,
+            "url": url,
+            "headers": headers,
+            "params": request.query_params,
+        }
+        if body is not None:
+            kwargs["json"] = body
+            
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.request(
-                request.method,
-                url,
-                content=body if body else None,
-                headers=headers,
-                params=request.query_params,
-            )
+            resp = await client.request(**kwargs)
             logger.info("Proxy SUCCESS downstream_url=%s status=%s", url, resp.status_code)
-
+            
         return Response(
             content=resp.content,
             status_code=resp.status_code,
-            headers={
-                k: v for k, v in resp.headers.items()
-                if k.lower() not in {"content-length", "content-encoding", "transfer-encoding"}
-            },
             media_type=resp.headers.get("content-type", "application/json"),
         )
     except httpx.RequestError as exc:
@@ -60,3 +57,12 @@ async def proxy_check_loan(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Downstream service unavailable: {str(exc)}",
         )
+
+
+@router.api_route("/check-loan", methods=["POST"])
+@limiter.limit(settings.rate_limit_default)
+async def proxy_check_loan(
+    request: Request,
+    _claims: dict = Depends(require_jwt),
+) -> Response:
+        return await _proxy_to_loan_service(request, "/check-loan")
