@@ -73,18 +73,21 @@ app.state.limiter = limiter
 
 # =========================================================
 # CORS CONFIGURATION
-# IMPORTANT: MUST BE FIRST MIDDLEWARE
 # =========================================================
+
+origins = [
+    "http://localhost:5173",
+    "https://t-r-u-s-t.vercel.app",
+    "https://www.t-r-u-s-t.vercel.app",
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://t-r-u-s-t.vercel.app",
-    ],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # =========================================================
