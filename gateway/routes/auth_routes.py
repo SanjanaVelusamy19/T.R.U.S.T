@@ -4,7 +4,7 @@ Proxy routes for the Auth microservice (registration, login, token verification)
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request, Response, status
-
+from fastapi.responses import JSONResponse
 from utils.config import get_settings
 from utils.limiter import limiter
 
@@ -17,20 +17,19 @@ settings = get_settings()
 
 
 async def _forward(request: Request, path: str) -> Response:
-    """
-    Forward incoming request to auth microservice.
-    """
 
     base_url = settings.auth_service_url.rstrip("/")
 
-    # IMPORTANT FIX
     url = f"{base_url}{path}"
 
-    body = await request.body()
+    try:
+        body = await request.json()
+    except Exception:
+        body = None
 
     headers = {
-    "content-type": "application/json"
-   }
+        "content-type": "application/json"
+    }
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -38,18 +37,14 @@ async def _forward(request: Request, path: str) -> Response:
             resp = await client.request(
                 method=request.method,
                 url=url,
-                content=body if body else None,
+                json=body,
                 headers=headers,
                 params=request.query_params,
             )
 
-        return Response(
-            content=resp.content,
+        return JSONResponse(
             status_code=resp.status_code,
-            media_type=resp.headers.get(
-                "content-type",
-                "application/json",
-            ),
+            content=resp.json(),
         )
 
     except httpx.RequestError as exc:
