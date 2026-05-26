@@ -125,7 +125,8 @@ async def proxy_downstream_request(
         if json_body is not None:
             kwargs["json"] = json_body
 
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        timeout = httpx.Timeout(10.0, connect=5.0)
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
             resp = await client.request(**kwargs)
 
         response_preview = (resp.text or "")[:2000]
@@ -146,6 +147,22 @@ async def proxy_downstream_request(
 
         return downstream_json_response(resp, downstream_url=url)
 
+    except httpx.TimeoutException as exc:
+        route_logger.error(
+            "Proxy timeout incoming_route=%s final_downstream_url=%s reason=%s",
+            incoming,
+            url,
+            str(exc),
+        )
+        return JSONResponse(
+            status_code=504,
+            content={
+                "success": False,
+                "error": "gateway_timeout",
+                "detail": str(exc),
+                "url": url,
+            },
+        )
     except httpx.RequestError as exc:
         route_logger.error(
             "Proxy upstream unreachable incoming_route=%s final_downstream_url=%s reason=%s",
