@@ -1,7 +1,7 @@
 """
 TRUST Auth Service — identity, credentials, and JWT issuance.
 """
-import os
+
 import logging
 import sys
 from typing import Annotated, Any
@@ -68,7 +68,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 @app.post("/register", status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterRequest, db: Annotated[Session, Depends(get_db)]) -> dict[str, Any] | JSONResponse:
+def register(payload: RegisterRequest, db: Annotated[Session, Depends(get_db)]) -> dict[str, Any]:
     """Create a new user account with a bcrypt-hashed password."""
     logger.info("REGISTER RECEIVED email=%s", payload.email.lower())
 
