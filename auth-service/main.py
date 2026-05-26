@@ -1,7 +1,7 @@
 """
 TRUST Auth Service — identity, credentials, and JWT issuance.
 """
-
+import os
 import logging
 import sys
 from typing import Annotated, Any
