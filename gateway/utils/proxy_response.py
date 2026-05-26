@@ -4,12 +4,25 @@ Helpers for gateway → downstream HTTP proxy responses.
 
 import logging
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
 logger = logging.getLogger("trust.gateway.proxy")
+
+# Paths that belong to the gateway public API only — never prepend to downstream URLs.
+_GATEWAY_PUBLIC_PREFIXES = (
+    "/api/advisor",
+    "/api/monitoring",
+    "/api/fraud",
+    "/api/twin",
+    "/api/trust",
+    "/api/gold-loan",
+    "/api/loan",
+    "/api/auth",
+)
 
 
 def _response_content(resp: httpx.Response) -> Any:
@@ -34,10 +47,46 @@ def downstream_json_response(resp: httpx.Response, *, downstream_url: str) -> JS
 
 
 def build_downstream_url(base_url: str, downstream_path: str) -> str:
-    """Join base URL (host only) with a path segment; no duplicate slashes."""
-    base = base_url.rstrip("/")
-    path = downstream_path if downstream_path.startswith("/") else f"/{downstream_path}"
-    return f"{base}{path}"
+    """
+    Join service base URL with the exact path exposed by the downstream FastAPI app.
+
+    ``downstream_path`` must match the target service route (e.g. ``/advisor/summary``,
+    ``/services-status``), not the gateway public path (``/api/advisor/summary``).
+    """
+    raw = base_url.strip().rstrip("/")
+    downstream = (
+        downstream_path if downstream_path.startswith("/") else f"/{downstream_path}"
+    )
+
+    parsed = urlparse(raw)
+    if not parsed.scheme or not parsed.netloc:
+        return f"{raw}{downstream}"
+
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    base_path = (parsed.path or "").rstrip("/")
+
+    if not base_path:
+        return f"{origin}{downstream}"
+
+    # Env mistakenly set to a gateway-facing path — use origin + app route only.
+    if base_path in _GATEWAY_PUBLIC_PREFIXES:
+        logger.warning(
+            "Service base URL contains gateway path %r; forwarding to %s%s",
+            base_path,
+            origin,
+            downstream,
+        )
+        return f"{origin}{downstream}"
+
+    # Base path already matches the downstream app route prefix.
+    if downstream == base_path or downstream.startswith(f"{base_path}/"):
+        return f"{origin}{downstream}"
+
+    # e.g. base=/advisor, downstream=/summary -> /advisor/summary
+    if not downstream.startswith(base_path):
+        return f"{origin}{base_path}{downstream}"
+
+    return f"{origin}{downstream}"
 
 
 async def proxy_downstream_request(
@@ -54,7 +103,7 @@ async def proxy_downstream_request(
     route_logger = log or logger
     url = build_downstream_url(base_url, downstream_path)
     route_logger.info(
-        "Proxy final_url=%s method=%s",
+        "Proxy final_downstream_url=%s method=%s",
         url,
         request.method,
     )
@@ -83,30 +132,48 @@ async def proxy_downstream_request(
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.request(**kwargs)
 
+        response_preview = (resp.text or "")[:2000]
         route_logger.info(
-            "Proxy response final_url=%s status=%s",
-            url,
+            "Proxy downstream_status=%s final_downstream_url=%s response_text=%s",
             resp.status_code,
+            url,
+            response_preview,
         )
+        if resp.status_code >= 400:
+            route_logger.warning(
+                "Proxy upstream HTTP error status=%s url=%s body=%s",
+                resp.status_code,
+                url,
+                response_preview,
+            )
+
         return downstream_json_response(resp, downstream_url=url)
 
     except httpx.RequestError as exc:
         route_logger.error(
-            "Proxy upstream unreachable final_url=%s reason=%s",
+            "Proxy upstream unreachable final_downstream_url=%s reason=%s",
             url,
             str(exc),
         )
         return JSONResponse(
             status_code=502,
-            content={"error": "Upstream service unreachable", "detail": str(exc)},
+            content={
+                "error": "Upstream service unreachable",
+                "detail": str(exc),
+                "downstream_url": url,
+            },
         )
     except Exception as exc:
         route_logger.error(
-            "Proxy internal error final_url=%s reason=%s",
+            "Proxy internal error final_downstream_url=%s reason=%s",
             url,
             str(exc),
         )
         return JSONResponse(
             status_code=500,
-            content={"error": "Gateway internal error", "detail": str(exc)},
+            content={
+                "error": "Gateway internal error",
+                "detail": str(exc),
+                "downstream_url": url,
+            },
         )

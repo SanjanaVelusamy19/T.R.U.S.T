@@ -1,6 +1,12 @@
 """
 Protected proxy routes for the AI Financial Advisor microservice.
 JWT is verified at the gateway before forwarding.
+
+Downstream advisor-service routes (see advisor-service/main.py):
+  GET /advisor/summary
+  GET /advisor/recommendations
+  GET /advisor/risk-analysis
+  GET /advisor/financial-health
 """
 
 import logging
@@ -17,8 +23,18 @@ router = APIRouter(prefix="/api/advisor", tags=["advisor-proxy"])
 settings = get_settings()
 logger = logging.getLogger("trust.gateway.advisor")
 
+# Exact path prefix on advisor-service (not the gateway /api/advisor prefix).
+_ADVISOR_SERVICE_PREFIX = "/advisor"
 
-async def _proxy_to_advisor_service(request: Request, downstream_path: str) -> Response:
+
+def _advisor_downstream_path(route_suffix: str) -> str:
+    """Map gateway /api/advisor/<suffix> to downstream /advisor/<suffix>."""
+    suffix = route_suffix.lstrip("/")
+    return f"{_ADVISOR_SERVICE_PREFIX}/{suffix}"
+
+
+async def _proxy_to_advisor_service(request: Request, route_suffix: str) -> Response:
+    downstream_path = _advisor_downstream_path(route_suffix)
     return await proxy_downstream_request(
         request,
         base_url=settings.advisor_service_url,
@@ -33,7 +49,7 @@ async def proxy_advisor_summary(
     request: Request,
     _claims: dict = Depends(require_jwt),
 ) -> Response:
-    return await _proxy_to_advisor_service(request, "/advisor/summary")
+    return await _proxy_to_advisor_service(request, "summary")
 
 
 @router.get("/recommendations")
@@ -42,7 +58,7 @@ async def proxy_advisor_recommendations(
     request: Request,
     _claims: dict = Depends(require_jwt),
 ) -> Response:
-    return await _proxy_to_advisor_service(request, "/advisor/recommendations")
+    return await _proxy_to_advisor_service(request, "recommendations")
 
 
 @router.get("/risk-analysis")
@@ -51,7 +67,7 @@ async def proxy_advisor_risk_analysis(
     request: Request,
     _claims: dict = Depends(require_jwt),
 ) -> Response:
-    return await _proxy_to_advisor_service(request, "/advisor/risk-analysis")
+    return await _proxy_to_advisor_service(request, "risk-analysis")
 
 
 @router.get("/financial-health")
@@ -60,7 +76,7 @@ async def proxy_advisor_financial_health(
     request: Request,
     _claims: dict = Depends(require_jwt),
 ) -> Response:
-    return await _proxy_to_advisor_service(request, "/advisor/financial-health")
+    return await _proxy_to_advisor_service(request, "financial-health")
 
 
 @router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
@@ -70,4 +86,4 @@ async def proxy_advisor_catch_all(
     path: str,
     _claims: dict = Depends(require_jwt),
 ) -> Response:
-    return await _proxy_to_advisor_service(request, f"/advisor/{path}")
+    return await _proxy_to_advisor_service(request, path)

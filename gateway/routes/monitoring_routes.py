@@ -1,6 +1,11 @@
 """
 Protected proxy routes for the Monitoring microservice.
 JWT is verified at the gateway before forwarding.
+
+Downstream monitoring-service routes (see monitoring-service/main.py):
+  GET /metrics
+  GET /system-status
+  GET /services-status
 """
 
 import logging
