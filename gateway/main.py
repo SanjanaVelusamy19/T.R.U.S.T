@@ -54,6 +54,18 @@ logger = logging.getLogger("trust.gateway")
 
 settings = get_settings()
 
+for _url_field in (
+    "auth_service_url",
+    "loan_service_url",
+    "trust_score_service_url",
+    "advisor_service_url",
+    "fraud_detection_service_url",
+    "digital_twin_service_url",
+    "monitoring_service_url",
+    "gold_loan_service_url",
+):
+    logger.info("%s=%s", _url_field, getattr(settings, _url_field))
+
 # =========================================================
 # FASTAPI APP
 # =========================================================

@@ -3,6 +3,7 @@ Centralized configuration for the API Gateway.
 Loads environment variables with sensible defaults for local development.
 """
 
+import logging
 from functools import lru_cache
 from typing import Any
 from urllib.parse import urlparse
@@ -82,11 +83,20 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _normalize_service_base_urls(self) -> "Settings":
-        """Ensure downstream base URLs have no path segments."""
+        """Ensure downstream base URLs have no path segments or trailing slashes."""
+        log = logging.getLogger("trust.gateway.config")
         for field in _SERVICE_URL_FIELDS:
             value = getattr(self, field, None)
             if isinstance(value, str) and value:
-                object.__setattr__(self, field, _strip_url_path(value))
+                normalized = _strip_url_path(value)
+                if normalized != value.strip().rstrip("/"):
+                    log.warning(
+                        "Stripped path from %s (was %r, now %r)",
+                        field,
+                        value,
+                        normalized,
+                    )
+                object.__setattr__(self, field, normalized)
         return self
 
 
