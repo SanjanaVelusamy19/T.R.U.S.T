@@ -4,8 +4,12 @@ function extractErrorMessage(error) {
   const payload = error.response?.data;
   if (typeof payload?.message === "string") return payload.message;
   if (typeof payload?.detail === "string") return payload.detail;
+  if (typeof payload?.error === "string") return payload.error;
   if (error.response?.status === 401) {
     return "Session expired. Please sign in again.";
+  }
+  if (error.response?.status === 502) {
+    return payload?.detail || "Upstream service unreachable. Check Render service URLs.";
   }
   if (error.response?.status === 503) {
     return "Trust score service is unavailable. Start trust-score-service on port 8003.";

@@ -16,7 +16,8 @@ from starlette.responses import Response
 
 logger = logging.getLogger("trust.gateway.duplicate_guard")
 
-_DEDUP_PATHS = frozenset({"/api/auth/register", "/api/auth/login"})
+# Only guard login — duplicate register blocks cause false "registration failed" UX.
+_DEDUP_PATHS = frozenset({"/api/auth/login"})
 _DEDUP_WINDOW_SEC = 3.0
 _recent_signatures: dict[str, float] = {}
 

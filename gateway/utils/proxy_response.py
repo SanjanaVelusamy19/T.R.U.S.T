@@ -25,24 +25,23 @@ _GATEWAY_PUBLIC_PREFIXES = (
 )
 
 
-def _response_content(resp: httpx.Response) -> Any:
+def _parse_json_body(resp: httpx.Response) -> Any:
+    """Always return JSON-serializable content for the frontend."""
     content_type = (resp.headers.get("content-type") or "").lower()
     if "application/json" in content_type:
         try:
             return resp.json()
         except ValueError:
-            return {"message": resp.text[:500] if resp.text else ""}
-    return {"message": resp.text[:500] if resp.text else ""}
+            pass
+    text = (resp.text or "").strip()
+    if not text:
+        return {"success": False, "message": "Empty upstream response"}
+    return {"success": False, "message": text[:2000]}
 
 
 def downstream_json_response(resp: httpx.Response, *, downstream_url: str) -> JSONResponse:
     """Build a JSONResponse from an httpx downstream response."""
-    logger.info(
-        "downstream response url=%s status=%s",
-        downstream_url,
-        resp.status_code,
-    )
-    content = _response_content(resp)
+    content = _parse_json_body(resp)
     return JSONResponse(status_code=resp.status_code, content=content)
 
 
@@ -68,7 +67,6 @@ def build_downstream_url(base_url: str, downstream_path: str) -> str:
     if not base_path:
         return f"{origin}{downstream}"
 
-    # Env mistakenly set to a gateway-facing path — use origin + app route only.
     if base_path in _GATEWAY_PUBLIC_PREFIXES:
         logger.warning(
             "Service base URL contains gateway path %r; forwarding to %s%s",
@@ -78,11 +76,9 @@ def build_downstream_url(base_url: str, downstream_path: str) -> str:
         )
         return f"{origin}{downstream}"
 
-    # Base path already matches the downstream app route prefix.
     if downstream == base_path or downstream.startswith(f"{base_path}/"):
         return f"{origin}{downstream}"
 
-    # e.g. base=/advisor, downstream=/summary -> /advisor/summary
     if not downstream.startswith(base_path):
         return f"{origin}{base_path}{downstream}"
 
@@ -97,13 +93,13 @@ async def proxy_downstream_request(
     log: logging.Logger | None = None,
     json_body: dict | None = None,
 ) -> JSONResponse:
-    """
-    Forward the incoming request to a downstream microservice with safe httpx handling.
-    """
+    """Forward the incoming request to a downstream microservice with safe httpx handling."""
     route_logger = log or logger
+    incoming = request.url.path
     url = build_downstream_url(base_url, downstream_path)
     route_logger.info(
-        "Proxy final_downstream_url=%s method=%s",
+        "Proxy incoming_route=%s final_downstream_url=%s method=%s",
+        incoming,
         url,
         request.method,
     )
@@ -114,10 +110,10 @@ async def proxy_downstream_request(
         except Exception:
             json_body = None
 
-    headers: dict[str, str] = {}
+    headers: dict[str, str] = {"Accept": "application/json"}
     auth_header = request.headers.get("authorization")
     if auth_header:
-        headers["authorization"] = auth_header
+        headers["Authorization"] = auth_header
 
     try:
         kwargs: dict[str, Any] = {
@@ -129,13 +125,14 @@ async def proxy_downstream_request(
         if json_body is not None:
             kwargs["json"] = json_body
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             resp = await client.request(**kwargs)
 
         response_preview = (resp.text or "")[:2000]
         route_logger.info(
-            "Proxy downstream_status=%s final_downstream_url=%s response_text=%s",
+            "Proxy downstream_status=%s incoming_route=%s final_downstream_url=%s response_text=%s",
             resp.status_code,
+            incoming,
             url,
             response_preview,
         )
@@ -151,29 +148,33 @@ async def proxy_downstream_request(
 
     except httpx.RequestError as exc:
         route_logger.error(
-            "Proxy upstream unreachable final_downstream_url=%s reason=%s",
+            "Proxy upstream unreachable incoming_route=%s final_downstream_url=%s reason=%s",
+            incoming,
             url,
             str(exc),
         )
         return JSONResponse(
             status_code=502,
             content={
-                "error": "Upstream service unreachable",
+                "success": False,
+                "error": "upstream_unreachable",
                 "detail": str(exc),
-                "downstream_url": url,
+                "url": url,
             },
         )
     except Exception as exc:
         route_logger.error(
-            "Proxy internal error final_downstream_url=%s reason=%s",
+            "Proxy internal error incoming_route=%s final_downstream_url=%s reason=%s",
+            incoming,
             url,
             str(exc),
         )
         return JSONResponse(
             status_code=500,
             content={
-                "error": "Gateway internal error",
+                "success": False,
+                "error": "gateway_internal_error",
                 "detail": str(exc),
-                "downstream_url": url,
+                "url": url,
             },
         )

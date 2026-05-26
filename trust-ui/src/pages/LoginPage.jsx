@@ -4,7 +4,7 @@ import { ArrowRight, Lock, Mail } from "lucide-react";
 import { GlassCard } from "../components/GlassCard.jsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
-import { api } from "../services/api.js";
+import { api, getApiErrorMessage } from "../services/api.js";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -28,13 +28,18 @@ export function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const { data } = await api.post("/api/auth/login", { email, password });
+      const { data } = await api.post("/api/auth/login", {
+        email: email.trim(),
+        password,
+      });
+      if (!data?.access_token || !data?.user) {
+        setError("Login succeeded but no access token was returned.");
+        return;
+      }
       loginWithToken(data.access_token, data.user);
       navigate(from, { replace: true });
     } catch (err) {
-      const data = err.response?.data;
-      const detail = data?.detail || data?.message || data?.error;
-      setError(typeof detail === "string" ? detail : "Unable to authenticate.");
+      setError(getApiErrorMessage(err, "Unable to authenticate."));
     } finally {
       setLoading(false);
     }

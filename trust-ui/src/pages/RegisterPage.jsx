@@ -4,7 +4,7 @@ import { BadgeCheck, UserPlus } from "lucide-react";
 import { GlassCard } from "../components/GlassCard.jsx";
 import { LoadingSpinner } from "../components/LoadingSpinner.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
-import { api } from "../services/api.js";
+import { api, getApiErrorMessage } from "../services/api.js";
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -39,15 +39,23 @@ export function RegisterPage() {
     try {
       const { data } = await api.post("/api/auth/register", {
         full_name: fullName,
-        email,
+        email: email.trim(),
         password,
       });
+      if (!data?.access_token || !data?.user) {
+        setError("Registration succeeded but no access token was returned.");
+        return;
+      }
       loginWithToken(data.access_token, data.user);
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      const data = err.response?.data;
-      const detail = data?.error || data?.detail || data?.message;
-      setError(typeof detail === "string" ? detail : "Registration could not be completed.");
+      if (err.response?.status === 409) {
+        setError("Please wait a moment before trying again.");
+        return;
+      }
+      setError(
+        getApiErrorMessage(err, "Registration could not be completed."),
+      );
     } finally {
       isSubmittingRef.current = false;
       setLoading(false);
